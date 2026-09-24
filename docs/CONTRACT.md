@@ -49,6 +49,7 @@ Each non-hero zone has a head: `[data-zone-head]` containing `[data-cmd]` (the t
 - `[data-terminal]`: input `#term-input`, output `[data-term-out]`. Opened by the backquote key, `[data-hud="terminal"]`
   or `window.__ezb.openTerminal()`. Commands listed in docs/BRIEF.md item 7.
 - `[data-game-overlay]`: contains `[data-game-root]` where a game mounts, `[data-game-close]`, `[data-game-score]`.
+  After a run pays XP, `[data-game-root]` carries `data-last-reward` (the amount paid through `host.awardXP`).
 - `[data-endscreen]`: shown once per session when `#contact` is fully reached; has `[data-countdown]` (SVG ring) and
   auto-closes at 0.
 - `[data-levelmap]`, `[data-trophy-room]`.

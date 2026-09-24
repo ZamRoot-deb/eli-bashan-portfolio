@@ -87,9 +87,9 @@ function letters(word: string, offset: number): string {
 
 function playerCard(): string {
   return `<aside class="pcard" aria-label="Player card" data-tilt>
-    <div class="pcard__top"><span>PLAYER CARD</span><span class="pcard__lv">LV.${pad2(PROFILE.level)}</span></div>
+    <div class="pcard__top"><span>PLAYER CARD</span><span class="pcard__lv" title="Level ${PROFILE.level}: ${PROFILE.level} years in the field">LV.${pad2(PROFILE.level)} <i>${PROFILE.level} YRS</i></span></div>
     <div class="pcard__portrait">
-      <img src="sprites/portrait.png" alt="Pixel line portrait of Eli Zamar Bashan, arms crossed" width="973" height="1109" decoding="async" />
+      <img src="sprites/portrait.png" alt="Pixel line portrait of Eli Zamar Bashan, arms crossed" width="560" height="638" decoding="async" />
       <span class="pcard__scan" aria-hidden="true"></span>
     </div>
     <dl class="pcard__stats">
@@ -97,6 +97,7 @@ function playerCard(): string {
       <div><dt>CLASS</dt><dd><span class="t-term">DFIR LEAD</span> / <span class="t-amber">AI ENGINEER</span></dd></div>
       <div><dt>GUILD</dt><dd>${esc(PROFILE.org.toUpperCase())}</dd></div>
     </dl>
+    <p class="pcard__barcap">SKILL METER <i>(self-rated)</i></p>
     <ul class="pcard__bars">
       ${each(PROFILE.statBars, (b) => `<li><span class="pcard__bar-label">${esc(b.label)}</span><span class="bar" style="--pct:${b.pct};${hueVar(b.hue)}" role="img" aria-label="${b.pct} percent"><i></i></span><span class="pcard__pct">${b.pct}%</span></li>`)}
     </ul>
@@ -118,9 +119,9 @@ function hero(): string {
       </h1>
       <p class="hero__roles">${esc(PROFILE.roles[0])} <i>/</i> ${esc(PROFILE.roles[1])} <i>@</i> ${esc(PROFILE.org)} <i>/</i> ${esc(PROFILE.city)}</p>
       <div class="hero__cta">
-        <a class="btn btn--term" href="mailto:${esc(PROFILE.email)}" data-sfx="select">${glyph('mail')}<span>Email</span></a>
-        <a class="btn btn--term" href="${esc(PROFILE.phoneHref)}" data-sfx="select">${glyph('phone')}<span>Call</span></a>
-        <a class="btn btn--gold" href="${esc(PROFILE.cvFile)}" download data-save-cv data-sfx="coin"><img class="px btn__floppy" src="sprites/floppy.png" alt="" width="20" height="23" /><span>Save CV</span></a>
+        <a class="btn btn--term" href="mailto:${esc(PROFILE.email)}">${glyph('mail')}<span>Email</span></a>
+        <a class="btn btn--term" href="${esc(PROFILE.phoneHref)}">${glyph('phone')}<span>Call</span></a>
+        <a class="btn btn--gold" href="${esc(PROFILE.cvFile)}" download data-save-cv><img class="px btn__floppy" src="sprites/floppy.png" alt="" width="20" height="23" /><span>Save CV</span></a>
       </div>
       <p class="hero__mandate"><span class="dot" aria-hidden="true"></span> ${esc(PROFILE.mandate[0])} <b aria-hidden="true">//</b> <span class="hero__num" data-stat="sectors">13</span> critical sectors <b aria-hidden="true">//</b> <span class="hero__num" data-stat="banks">24</span> member banks</p>
     </div>
@@ -418,7 +419,7 @@ function contact(): string {
   <header class="zhead" data-zone-head>
     <div class="zhead__eyebrow"><span class="zhead__label">${esc(CONTACT.eyebrow)}</span><span class="zhead__rule" aria-hidden="true"></span><span class="zhead__zone" aria-hidden="true">ZONE ${zoneIndex('contact')}</span></div>
     ${prompt(CONTACT.cmd)}
-    <h2 class="zhead__title contact__title" id="contact-title">${esc(CONTACT.title[0])}<br />${esc(CONTACT.title[1])} <span class="t-gold">${esc(CONTACT.coin)}</span></h2>
+    <h2 class="zhead__title contact__title" id="contact-title">${esc(CONTACT.title[0])}<br />${esc(CONTACT.title[1])} <a class="coin-link" href="mailto:${esc(PROFILE.email)}">${esc(CONTACT.coin)}</a></h2>
   </header>
   <div class="contact">
     <div class="contact__left">

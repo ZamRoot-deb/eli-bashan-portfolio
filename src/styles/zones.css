@@ -366,6 +366,11 @@
   gap: 14px;
   min-width: 0;
 }
+@media (min-width: 761px) {
+  .guide {
+    margin-left: max(0px, calc(150px - max(0px, (100vw - var(--maxw)) / 2) - var(--gutter)));
+  }
+}
 .guide__poke {
   flex: none;
   display: block;
@@ -1235,7 +1240,8 @@
 }
 .filter {
   --c: var(--term);
-  padding: 5px 10px;
+  min-height: 44px;
+  padding: 5px 12px;
   font-family: var(--f-term);
   font-size: 18px;
   line-height: 1.1;
@@ -1878,7 +1884,8 @@
   margin-top: 6px;
 }
 .cart__insert {
-  padding: 6px 12px;
+  min-height: 44px;
+  padding: 6px 14px;
   font-family: var(--f-pixel);
   font-size: 9px;
   letter-spacing: 0.08em;
@@ -1910,4 +1917,30 @@
 .zone[data-inview='false'] *::before,
 .zone[data-inview='false'] *::after {
   animation-play-state: paused !important;
+}
+
+.pcard__lv i,
+.pcard__barcap i {
+  font-style: normal;
+  color: var(--dim);
+}
+.pcard__barcap {
+  font-family: var(--f-pixel);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.coin-link {
+  color: var(--amber);
+  text-shadow: 0 0 22px rgba(255, 215, 95, 0.45);
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.12em;
+  text-decoration-color: color-mix(in srgb, var(--amber) 45%, transparent);
+  transition: text-decoration-color 0.15s;
+}
+.coin-link:hover,
+.coin-link:focus-visible {
+  text-decoration-color: var(--amber);
 }

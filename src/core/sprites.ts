@@ -217,8 +217,8 @@ export const BUG: Sprite = [
   'k..k....k..k',
 ]
 
-export const SPRITE_W = (s: Sprite): number => s[0].length
-export const SPRITE_H = (s: Sprite): number => s.length
+const SPRITE_W = (s: Sprite): number => s[0].length
+const SPRITE_H = (s: Sprite): number => s.length
 
 const cache = new Map<string, HTMLCanvasElement>()
 

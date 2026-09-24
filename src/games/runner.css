@@ -7,7 +7,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #04070a;
+  background: var(--ink);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -67,7 +67,7 @@
   gap: 10px;
   max-width: min(420px, 92%);
   padding: clamp(16px, 4vw, 28px) clamp(18px, 5vw, 32px);
-  border: 1px solid #17563a;
+  border: 1px solid var(--line);
   border-radius: 4px;
   background: rgba(10, 16, 20, 0.88);
   box-shadow: 0 0 0 1px rgba(77, 255, 158, 0.08), 0 18px 60px rgba(0, 0, 0, 0.55);
@@ -79,13 +79,13 @@
   font-weight: 400;
   letter-spacing: 0.03em;
   font-size: clamp(17px, calc(var(--rn-w, 960px) * 0.046), 38px);
-  color: #d9f2e4;
+  color: var(--paper);
   text-shadow: 0 0 18px rgba(77, 255, 158, 0.35);
   line-height: 1.25;
 }
 
 .rn-title--alert {
-  color: #ff5a6e;
+  color: var(--red);
   text-shadow: 0 0 18px rgba(255, 90, 110, 0.4);
 }
 
@@ -95,31 +95,31 @@
   margin: 0;
   font-family: 'VT323', monospace;
   font-size: clamp(14px, calc(var(--rn-w, 960px) * 0.02), 19px);
-  color: #6fae8d;
+  color: var(--dim);
   letter-spacing: 0.02em;
 }
 
 .rn-score {
   margin: 0;
   font-family: 'VT323', monospace;
-  color: #d9f2e4;
+  color: var(--paper);
   font-size: clamp(20px, calc(var(--rn-w, 960px) * 0.032), 30px);
   letter-spacing: 0.02em;
 }
 
 .rn-num {
-  color: #ffd75f;
+  color: var(--amber);
 }
 
 .rn-badge {
   margin: 2px 0 0;
   padding: 3px 10px;
-  border: 1px solid #ffd75f;
+  border: 1px solid var(--amber);
   border-radius: 999px;
   font-family: 'Press Start 2P', monospace;
   font-size: 9px;
   letter-spacing: 0.06em;
-  color: #ffd75f;
+  color: var(--amber);
   background: rgba(255, 215, 95, 0.1);
 }
 
@@ -133,10 +133,10 @@
 
 .rn-btn {
   appearance: none;
-  border: 1px solid #4dff9e;
+  border: 1px solid var(--term);
   border-radius: 3px;
   background: rgba(77, 255, 158, 0.1);
-  color: #d9f2e4;
+  color: var(--paper);
   font-family: 'VT323', monospace;
   font-size: 20px;
   letter-spacing: 0.08em;
@@ -154,14 +154,14 @@
 }
 
 .rn-btn:focus-visible {
-  outline: 2px solid #4dff9e;
+  outline: 3px solid var(--amber);
   outline-offset: 2px;
 }
 
 .rn-exit-btn {
-  border-color: #6fae8d;
+  border-color: var(--dim);
   background: rgba(111, 174, 141, 0.08);
-  color: #6fae8d;
+  color: var(--dim);
 }
 
 .rn-exit-btn:hover {

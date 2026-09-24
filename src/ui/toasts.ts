@@ -6,6 +6,14 @@ import { ACHIEVEMENTS } from '../core/xp'
 import { glyph, h, uiRoot } from './dom'
 
 let region: HTMLElement
+let srStatus: HTMLElement
+
+/** Polite screen-reader announcement for feedback that is otherwise only visual. */
+export function announce(text: string): void {
+  if (!srStatus) return
+  srStatus.textContent = ''
+  window.setTimeout(() => (srStatus.textContent = text), 30)
+}
 
 const gaming = (): boolean => document.querySelector('[data-game-overlay]:not([hidden])') !== null
 
@@ -41,8 +49,8 @@ function render(kicker: string, title: string, xp: number | null, icon: Paramete
     t.classList.add('is-out')
     window.setTimeout(() => {
       t.remove()
-      if (!inGame) return
-      showingInGame = false
+      if (inGame) showingInGame = false
+      // drain regardless of where this toast was shown: a game may have closed meanwhile
       const next = queue.shift()
       if (next) toast(...next)
     }, 320)
@@ -57,7 +65,8 @@ function levelUp(level: number): void {
 
 export function initToasts(): void {
   region = h('div', { class: 'toasts', 'data-toasts': '', role: 'status', 'aria-live': 'polite' })
-  uiRoot().append(region)
+  srStatus = h('p', { class: 'sr-only', role: 'status', 'aria-live': 'polite' })
+  uiRoot().append(region, srStatus)
   on('achievement', ({ id, title }) => {
     const a = ACHIEVEMENTS.find((x) => x.id === id)
     toast('ACHIEVEMENT UNLOCKED', title, a?.xp ?? null, a?.icon ?? 'trophy')

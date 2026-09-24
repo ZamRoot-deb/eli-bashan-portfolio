@@ -30,8 +30,6 @@ function enter(id: string): void {
   emit('zone', { id, first })
 }
 
-export const currentZone = (): string => current || 'top'
-
 /** Scroll to a zone with a warp flourish on the starfield. */
 export function warpTo(id: string): void {
   const el = document.getElementById(id)

@@ -22,6 +22,8 @@ export const KEYS = {
   ArrowUp: { key: 'ArrowUp', code: 'ArrowUp', windowsVirtualKeyCode: 38 },
   ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 },
   Tab: { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 },
+  KeyA: { key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, text: 'a' },
+  KeyB: { key: 'b', code: 'KeyB', windowsVirtualKeyCode: 66, text: 'b' },
 }
 
 export async function launch({ port = 9700 + Math.floor(Math.random() * 200) } = {}) {

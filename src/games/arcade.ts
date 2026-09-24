@@ -43,11 +43,12 @@ function teardown(): void {
   current = null
   root.replaceChildren()
   delete root.dataset.state
+  delete root.dataset.lastReward
   root.className = 'game-root'
 }
 
 export async function openGame(id: GameId): Promise<void> {
-  if (!(id in LOADERS)) return
+  if (!dlg || !(id in LOADERS)) return
   if (current) teardown()
   const meta = ARCADE.games.find((g) => g.id === id)
   dlg.titleEl.textContent = meta?.title ?? id
@@ -78,6 +79,7 @@ export async function openGame(id: GameId): Promise<void> {
     awardXP: (amount, reason) => {
       const xp = Math.round(Math.max(0, Math.min(80, amount)))
       if (!xp) return
+      root.dataset.lastReward = String(xp)
       award(xp, `${meta?.title ?? id}: ${reason}`)
       toast('RUN COMPLETE', `${meta?.title ?? id}: ${reason}`, xp, 'gamepad', 'var(--term)')
     },

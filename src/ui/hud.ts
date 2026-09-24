@@ -3,8 +3,8 @@
 import { PROFILE, ZONES } from '../content'
 import { on } from '../core/bus'
 import { isMuted, setMuted, sfx } from '../core/sfx'
-import { ACHIEVEMENTS, getLevel, getXP, levelProgress, unlock, unlockedIds, zonesSeen } from '../core/xp'
-import { $, glyph, h, uiRoot } from './dom'
+import { getLevel, getXP, levelProgress, unlock, unlockedIds, zonesSeen } from '../core/xp'
+import { glyph, h, svg, uiRoot } from './dom'
 
 interface HudActions {
   openTerminal(): void
@@ -79,11 +79,12 @@ export function initHud(actions: HudActions): void {
 
   // ---- scroll-to-top ring
   const C = 2 * Math.PI * 22
-  const ring = h('span', {
-    html: `<svg class="ring" viewBox="0 0 50 50" aria-hidden="true"><circle class="ring__track" cx="25" cy="25" r="22" fill="none" stroke-width="3"/><circle class="ring__fill" cx="25" cy="25" r="22" fill="none" stroke-width="3" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${C.toFixed(1)}"/></svg>`,
-  })
+  const ringFill = svg('circle', { class: 'ring__fill', cx: 25, cy: 25, r: 22, fill: 'none', 'stroke-width': 3, 'stroke-dasharray': C.toFixed(1), 'stroke-dashoffset': C.toFixed(1) })
+  const ring = svg('svg', { class: 'ring', viewBox: '0 0 50 50', 'aria-hidden': 'true' },
+    svg('circle', { class: 'ring__track', cx: 25, cy: 25, r: 22, fill: 'none', 'stroke-width': 3 }),
+    ringFill,
+  )
   const scrolltop = h('button', { class: 'scrolltop', type: 'button', 'data-scrolltop': '', 'aria-label': 'Back to top' }, ring, glyph('arrow-up'))
-  const ringFill = ring.querySelector<SVGCircleElement>('.ring__fill')
 
   root.append(tl, tr, bl, br, minimap, scrolltop)
 
@@ -140,7 +141,7 @@ export function initHud(actions: HudActions): void {
       const doc = document.documentElement
       const max = doc.scrollHeight - window.innerHeight
       const p = max > 0 ? window.scrollY / max : 0
-      ringFill?.setAttribute('stroke-dashoffset', (C * (1 - p)).toFixed(1))
+      ringFill.setAttribute('stroke-dashoffset', (C * (1 - p)).toFixed(1))
       scrolltop.classList.toggle('is-on', window.scrollY > window.innerHeight * 0.6)
       writeXY()
     })
@@ -176,5 +177,3 @@ export function initHud(actions: HudActions): void {
   })
 }
 
-export const achievementTotal = (): number => ACHIEVEMENTS.length
-export const hudEl = (hook: string): HTMLElement | null => $(`[data-hud="${hook}"]`)

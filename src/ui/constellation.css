@@ -156,7 +156,7 @@
 
 .constellation__card-hint {
   display: block;
-  color: var(--faint, #3d6b55);
+  color: var(--faint, #528f70);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.04em;

@@ -34,6 +34,20 @@ node tools/check-static.mjs
 game (keyboard and pointer), and prints one PASS/FAIL line per check. There is no dev server in this project
 on purpose.
 
+## Hosting headers (recommended)
+
+The build has no inline scripts, so a strict script policy works; styles need `'unsafe-inline'` for the
+pre-rendered `style="--x:..."` attributes.
+
+```
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: geolocation=(), camera=(), microphone=()
+```
+
+Serve text assets with gzip or brotli (the JS and CSS compress about 4x).
+
 ## Secrets for players
 
 Press the backquote key for the terminal. There is a flag to find.

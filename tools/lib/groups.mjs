@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { waitFor, makeCheck, result, browserExpr, sleep } from './util.mjs'
 import { mimeFor } from './serve.mjs'
-import { GAME_IDS, ZONE_IDS_EXPECTED } from './content.mjs'
+import { EXPECTED, GAME_IDS, ZONE_IDS_EXPECTED } from './content.mjs'
 
 const FAST_NOBOOT = '/index.html?fast&noboot'
 const FONT_HOST_RE = /fonts\.(googleapis|gstatic)\.com/
@@ -173,6 +173,15 @@ export async function gContent(ctx) {
   try {
     if (!ready) return { pass: false, notes: 'app did not reach data-app=ready within 20s' }
     await shot(ctx, page, 'content-ready')
+
+    // content.ts itself must match the source facts (the DOM checks below compare against content.ts)
+    const facts = {
+      platforms: c.platformsCount, caseTypes: c.caseTypesCount, caseStats: c.caseStatsCount, roles: c.rolesCount,
+      rolesActive: c.rolesActiveCount, trophies: c.trophiesCount, impactStats: c.impactStatsCount, metrics: c.metricsCount,
+      stackGroups: c.stackGroupsCount, stackItems: c.stackItemsCount, articles: c.articlesCount, edu: c.eduCount,
+      certs: c.certsCount, sectors: c.sectors, banks: c.banks,
+    }
+    for (const [k, want] of Object.entries(EXPECTED)) chk.ok(facts[k] === want, `content.ts ${k} is ${facts[k]} (source says ${want})`)
 
     const nameText = await textOf(page, '#top [data-name]')
     chk.ok(nameText != null, '#top [data-name] exists')
@@ -396,6 +405,7 @@ export async function gTerminal(ctx) {
 
     await runCmd('help')
     let o = await out()
+    const rootBefore = await page.eval(`window.__ezb.achievements().includes('root')`)
     chk.ok(/whoami/i.test(o), '`help` output mentions "whoami"')
 
     await runCmd('whoami')
@@ -422,6 +432,9 @@ export async function gTerminal(ctx) {
 
     await runCmd('play runner')
     chk.ok(await waitFor(() => isVisible(page, '[data-game-overlay]'), { timeout: 4000 }), '`play runner` opens [data-game-overlay]')
+    // the game must paint on top of the terminal, not open invisibly underneath it
+    const onTop = await page.eval(`(() => { const e = document.elementFromPoint(innerWidth / 2, innerHeight / 2); return !!e && !!e.closest('[data-game-overlay]') })()`)
+    chk.ok(onTop, 'the game opened from the terminal is the topmost layer (elementFromPoint at the centre)')
     await page.key('Escape')
     chk.ok(
       await waitFor(async () => !(await isVisible(page, '[data-game-overlay]')) && (await isVisible(page, '[data-terminal]')), { timeout: 3000 }),
@@ -431,6 +444,8 @@ export async function gTerminal(ctx) {
     const beforeSudo = (await out()).length
     await runCmd('sudo hire-me')
     chk.ok((await out()).length > beforeSudo, '`sudo hire-me` answers with new output')
+    const rootAfter = await page.eval(`window.__ezb.achievements().includes('root')`)
+    chk.ok(rootAfter, `sudo unlocks the root achievement (before=${rootBefore}, after=${rootAfter})`)
 
     await page.key('Escape')
     chk.ok(await waitFor(async () => !(await isVisible(page, '[data-terminal]')), { timeout: 3000 }), 'Escape closes the terminal')
@@ -584,6 +599,8 @@ export async function gXp(ctx) {
 
     const after = await page.eval('window.__ezb.xp()')
     chk.ok(after > before, `xp() increased after a run (${before} -> ${after})`)
+    const reward = await page.eval(`Number(document.querySelector('[data-game-root]')?.dataset.lastReward || 0)`)
+    chk.ok(reward > 0, `the game paid its own run reward via host.awardXP (data-last-reward=${reward})`)
 
     const hudXp = await textOf(page, '[data-hud="xp"]')
     const hudNum = parseInt((hudXp || '').match(/\d+/)?.[0] ?? '-1', 10)
@@ -824,6 +841,9 @@ export async function gBoot(ctx) {
     chk.ok(present, '[data-boot] present on a ?boot load')
     await shot(ctx, page, 'boot-shown')
 
+    await page.key('Backquote') // the terminal hotkey must only skip boot, never also open the terminal
+    await sleep(300)
+    chk.ok(!(await isVisible(page, '[data-terminal]')), 'backquote on the boot screen skips boot without opening the terminal')
     const t0 = Date.now()
     await page.key('Enter')
     const gone = await waitFor(
@@ -1001,9 +1021,98 @@ export async function gConsole(ctx) {
   return { pass: false, notes: hard.join(' | ') }
 }
 
+// ---------------------------------------------------------------------------
+// play: the gamified layer a visitor can actually trigger (flag, cheat code, counters, copy,
+// constellation discovery) plus one full game run at phone width with pointer input.
+// ---------------------------------------------------------------------------
+
+export async function gPlay(ctx) {
+  const chk = makeCheck()
+  const has = (page, id) => page.eval(`window.__ezb.achievements().includes(${JSON.stringify(id)})`)
+  const { page, ready } = await openReady(ctx)
+  try {
+    if (!ready) return { pass: false, notes: 'app did not reach data-app=ready within 20s' }
+
+    // terminal CTF: ls -a -> cat .secret -> rot13 -> submit
+    await page.key('Backquote')
+    await waitFor(() => isVisible(page, '[data-terminal]'), { timeout: 3000 })
+    const run = async (cmd) => {
+      await page.eval(`document.getElementById('term-input')?.focus()`)
+      await page.insertText(cmd)
+      await page.key('Enter')
+      await sleep(200)
+      return (await textOf(page, '[data-term-out]')) || ''
+    }
+    chk.ok((await run('ls -a')).includes('.secret'), '`ls -a` reveals .secret')
+    const secret = (await run('cat .secret')).match(/RMO\{[a-z_]+\}/)?.[0]
+    chk.ok(!!secret, 'cat .secret prints a rot13 flag')
+    const flag = secret ? (await run(`rot13 ${secret}`)).match(/EZB\{[a-z_]+\}/g)?.pop() : null
+    chk.ok(!!flag, 'rot13 decodes the flag')
+    if (flag) await run(`submit ${flag}`)
+    chk.ok(await has(page, 'flag'), 'submitting the decoded flag unlocks "flag"')
+    await run('submit EZB{nope}')
+    chk.ok(/Wrong flag/i.test((await textOf(page, '[data-term-out]')) || ''), 'a wrong flag is rejected')
+    await page.key('Escape')
+    await waitFor(async () => !(await isVisible(page, '[data-terminal]')), { timeout: 3000 })
+
+    // cheat code
+    for (const k of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA']) await page.key(k)
+    await sleep(200)
+    chk.ok(await has(page, 'konami'), 'the classic cheat code unlocks "konami"')
+
+    // counters: cartridges, dossiers, badges
+    await page.eval(`document.querySelectorAll('.cart__insert').forEach(b => b.click())`)
+    await sleep(150)
+    chk.ok(await has(page, 'collector'), 'inserting all 5 cartridges unlocks "collector"')
+    await page.eval(`document.querySelectorAll('[data-case]').forEach(d => d.click())`)
+    await waitFor(() => has(page, 'decryptor'), { timeout: 4000 })
+    chk.ok(await has(page, 'decryptor'), 'decrypting all 8 case files unlocks "decryptor"')
+    await page.eval(`document.querySelectorAll('[data-cert]').forEach(b => b.click())`)
+    await sleep(150)
+    const seen = await countOf(page, '[data-cert][data-seen="true"]')
+    chk.ok(seen === (ctx.content ? ctx.content.certsCount : 16), `every badge shows its inspected state (${seen})`)
+    chk.ok(/16\/16/.test((await textOf(page, '[data-badge-count]')) || ''), 'the badge counter reads 16/16')
+    chk.ok(await has(page, 'librarian'), 'inspecting all badges unlocks "librarian"')
+
+    // contact copy button gives feedback and counts as reaching out
+    await page.eval(`document.querySelector('[data-contact-row][data-kind="email"] [data-copy]')?.click()`)
+    await sleep(300)
+    chk.ok((await countOf(page, '[data-contact-row][data-kind="email"] .row__copy.is-copied')) === 1, 'the email copy button shows feedback')
+    chk.ok(await has(page, 'hello-world'), 'copying a contact unlocks "hello-world"')
+
+    // constellation: inspecting every star by keyboard focus
+    await page.eval(`document.querySelectorAll('[data-metric]').forEach(li => { li.focus(); li.blur() })`)
+    await sleep(300)
+    chk.ok(await has(page, 'stargazer'), 'inspecting all 21 stars unlocks "stargazer"')
+    await shot(ctx, page, 'play-desktop')
+  } finally {
+    await page.close()
+  }
+
+  // a full game at phone width, pointer only
+  const { page: phone, ready: ready2 } = await openReady(ctx, { width: 375, height: 812, mobile: true })
+  try {
+    if (!ready2) chk.fail('phone: app did not reach data-app=ready within 20s')
+    else {
+      await phone.click('[data-game-launch][data-game-id="runner"]')
+      chk.ok(await waitFor(async () => (await gameState(phone)) === 'ready', { timeout: 6000 }), 'phone: runner reaches ready')
+      const start = await firstVisibleButtonRect(phone, '[data-game-root]')
+      if (start) await phone.clickPoint(start.x, start.y)
+      chk.ok(await waitFor(async () => (await gameState(phone)) === 'playing', { timeout: 4000 }), 'phone: a tap on START begins the run')
+      chk.ok(await waitFor(async () => (await gameState(phone)) === 'over', { timeout: 20000 }), 'phone: the run reaches game over')
+      const fits = await phone.eval(`(() => { const r = document.querySelector('[data-game-root]').getBoundingClientRect(); return r.width <= innerWidth && r.right <= innerWidth + 1 })()`)
+      chk.ok(fits, 'phone: the game fits the viewport width')
+      await shot(ctx, phone, 'play-phone-runner')
+    }
+  } finally {
+    await phone.close()
+  }
+  return result(chk.reasons, 'flag, cheat code, cartridges, dossiers, badges, copy, constellation, phone runner')
+}
+
 export const GROUP_ORDER = [
   'serve', 'content', 'icons', 'hud', 'routing', 'terminal', 'games', 'xp',
-  'storage-off', 'reduced-motion', 'layout', 'boot', 'endscreen', 'mascot', 'a11y',
+  'storage-off', 'reduced-motion', 'layout', 'boot', 'endscreen', 'mascot', 'a11y', 'play',
 ]
 
 export const ALL_GROUPS = {
@@ -1022,5 +1131,6 @@ export const ALL_GROUPS = {
   endscreen: gEndscreen,
   mascot: gMascot,
   a11y: gA11y,
+  play: gPlay,
   console: gConsole,
 }

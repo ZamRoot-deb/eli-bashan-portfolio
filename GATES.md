@@ -83,8 +83,13 @@ Run: node ~/.claude/skills/unlazy/scripts/gate-check.mjs --timeout 600
   EXPECT: PASS console
   EVIDENCE: PASS a11y h1=1; imgs alt ok; buttons named; dialogs modal+named; 25 focus stops checked | PASS console 0 errors across 24 page loads
 
-- [ ] G17: Review: /ship run on the full repo, every Blocker fixed or accepted with a reason; ui-operational-audit run
-  EVIDENCE: pending
+- [x] G20: Play layer: terminal flag path, cheat code, cartridge/dossier/badge counters, copy feedback, constellation discovery and a full game at phone width all work
+  CHECK: node tools/verify.mjs --only play
+  EXPECT: PASS play
+  EVIDENCE: PASS play flag, cheat code, cartridges, dossiers, badges, copy, constellation, phone runner | PASS console 0 errors across 2 page loads
+
+- [x] G17: Review: /ship run on the full repo, every Blocker fixed or accepted with a reason; ui-operational-audit run
+  EVIDENCE: /ship with 9 reviewers (intent-dod, ux-completeness, design-a11y, demo-critic, correctness, performance-scale, security-privacy, surgical-simplicity, tests) plus ui-operational-audit. Fixed: game hidden under the terminal (dialog stacking), toast queue dropping achievements, backquote on boot opening the terminal, mascot bubble text race, HUD clocks covering the mascot button, --faint contrast on panel-2, silent copy feedback for screen readers, sub-44px touch targets and the compass specificity bug, runner.css token drift, raw-markup sink removed from h(), portrait 138KB to 72KB, idle-deferred init, unbatched scroll handler, dead code and 564KB of duplicate fixtures, stat bars labelled self-rated, LV.08 explained, Insert coin made a real link, test gaps (literal content facts, game reward path, sudo side effect, new play group, stacking and boot-key checks). Accepted with reason: hash URLs instead of paths (host-agnostic), Google Fonts not self-hosted (follow-up), module-init failures log only (no current trigger).
 
 - [x] G18: Committed and pushed to the private GitHub repo, nothing unpushed
   CHECK: git fetch -q origin 2>/dev/null; test -z "$(git status --porcelain)" && test "$(git rev-list --count origin/main..HEAD)" = "0" && echo PASS-PUSHED || echo FAIL-PUSHED

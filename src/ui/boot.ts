@@ -36,7 +36,7 @@ export function runBoot(onDone: () => void): void {
     bar,
     h('p', { class: 'boot__skip' }, '[ press any key or tap to skip ]'),
   )
-  const el = h('div', { class: 'boot', 'data-boot': '', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Starting EZB-OS' }, box)
+  const el = h('div', { class: 'boot', 'data-boot': '', role: 'status', 'aria-label': 'Starting EZB-OS. Press any key to skip.' }, box)
   uiRoot().append(el)
 
   let finished = false

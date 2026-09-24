@@ -361,7 +361,7 @@ export function initTerminal(play: (id: GameId) => void): void {
     if (e.key !== '`' || e.metaKey || e.ctrlKey || e.altKey) return
     const t = e.target as HTMLElement | null
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
-    if (document.querySelector('[data-game-overlay]:not([hidden])')) return
+    if (document.querySelector('[data-game-overlay]:not([hidden]), [data-boot]')) return
     e.preventDefault()
     if (dlg.isOpen()) dlg.close()
     else dlg.open()
@@ -370,4 +370,3 @@ export function initTerminal(play: (id: GameId) => void): void {
 
 export const openTerminal = (): void => dlg.open()
 export const closeTerminal = (): void => dlg.close()
-export const runCommand = (cmd: string): void => run(cmd)

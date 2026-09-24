@@ -6,6 +6,7 @@ import { sfx } from '../core/sfx'
 import { count, counted, unlock } from '../core/xp'
 import { $, $$, h } from './dom'
 import { scramble } from './fx'
+import { announce } from './toasts'
 
 function initCartridges(): void {
   const carts = $$<HTMLElement>('[data-platform]')
@@ -153,6 +154,7 @@ function initContact(): void {
       void copyText(value).then((ok) => {
         const label = b.querySelector('.row__copied')
         if (label) label.textContent = ok ? 'Copied' : 'Select it'
+        announce(ok ? `Copied ${value}` : `Could not copy. The value is ${value}`)
         b.classList.add('is-copied')
         window.setTimeout(() => b.classList.remove('is-copied'), 1400)
         sfx(ok ? 'coin' : 'error')

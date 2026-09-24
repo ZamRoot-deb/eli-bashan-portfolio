@@ -6,7 +6,7 @@ import { sfx } from '../core/sfx'
 import { session } from '../core/store'
 import { ACHIEVEMENTS, getLevel, getXP, unlockedIds, zonesSeen } from '../core/xp'
 import { createDialog, type Dialog } from './dialog'
-import { $, h } from './dom'
+import { $, h, svg } from './dom'
 import { formatDuration, sessionSeconds } from './hud'
 import { warpTo } from './zones'
 
@@ -22,12 +22,11 @@ function stat(value: string, label: string): HTMLElement {
 export function showEnd(): void {
   const C = 2 * Math.PI * 28
   const num = h('b', {}, String(SECONDS))
-  const ring = h('div', {
-    class: 'countdown',
-    'data-countdown': '',
-    html: `<svg viewBox="0 0 64 64" aria-hidden="true"><circle class="cd__track" cx="32" cy="32" r="28"/><circle class="cd__fill" cx="32" cy="32" r="28" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="0"/></svg>`,
-  }, num)
-  const fillEl = ring.querySelector<SVGCircleElement>('.cd__fill')
+  const fillEl = svg('circle', { class: 'cd__fill', cx: 32, cy: 32, r: 28, 'stroke-dasharray': C.toFixed(1), 'stroke-dashoffset': 0 })
+  const ring = h('div', { class: 'countdown', 'data-countdown': '' },
+    svg('svg', { viewBox: '0 0 64 64', 'aria-hidden': 'true' }, svg('circle', { class: 'cd__track', cx: 32, cy: 32, r: 28 }), fillEl),
+    num,
+  )
 
   const again = h('button', { class: 'btn btn--gold', type: 'button' }, 'Play again')
   const arcade = h('button', { class: 'btn', type: 'button' }, 'Open the arcade')
@@ -72,7 +71,7 @@ export function showEnd(): void {
     const elapsed = (performance.now() - start) / 1000
     left = Math.max(0, SECONDS - elapsed)
     num.textContent = String(Math.ceil(left))
-    fillEl?.setAttribute('stroke-dashoffset', (C * (1 - left / SECONDS)).toFixed(1))
+    fillEl.setAttribute('stroke-dashoffset', (C * (1 - left / SECONDS)).toFixed(1))
     if (left <= 0) {
       dlg.close()
       return

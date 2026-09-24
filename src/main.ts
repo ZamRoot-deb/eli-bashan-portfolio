@@ -34,6 +34,12 @@ declare global {
   }
 }
 
+// Below-the-fold modules start when the browser is idle, keeping the first task short on phones.
+const whenIdle = (fn: () => void): void => {
+  if ('requestIdleCallback' in window) window.requestIdleCallback(fn, { timeout: 400 })
+  else setTimeout(fn, 60)
+}
+
 function start(): void {
   initMotion()
   safe('toasts', initToasts)
@@ -43,22 +49,22 @@ function start(): void {
   safe('zones', initZones)
   safe('fx', initFx)
   safe('mascot', initMascot)
-  safe('interact', initInteract)
-  safe('constellation', () => {
-    const el = $('[data-constellation]')
-    if (!el) return
-    mountConstellation(el, {
-      reducedMotion: isReduced(),
-      onDiscover: (id) => void count('stars', id),
-      onComplete: () => void unlock('stargazer'),
-    })
-  })
-  safe('arcade', initArcade)
   safe('terminal', () => initTerminal((id: GameId) => void openGame(id)))
-  safe('endscreen', initEndscreen)
-  safe('secrets', initSecrets)
-  safe('banner', initBanner)
-  safe('blips', () => initHoverBlips(() => sfx('blip')))
+
+  let deferredDone = false
+  let bootDone = false
+  const maybeReady = () => {
+    if (deferredDone && bootDone) document.documentElement.dataset.app = 'ready'
+  }
+  whenIdle(() => {
+    deferred()
+    deferredDone = true
+    maybeReady()
+  })
+  runBoot(() => {
+    bootDone = true
+    maybeReady()
+  })
 
   window.__ezb = {
     xp: getXP,
@@ -72,10 +78,24 @@ function start(): void {
     showEnd,
     zones: ZONES.map((z) => z.id),
   }
+}
 
-  runBoot(() => {
-    document.documentElement.dataset.app = 'ready'
+function deferred(): void {
+  safe('interact', initInteract)
+  safe('constellation', () => {
+    const el = $('[data-constellation]')
+    if (!el) return
+    mountConstellation(el, {
+      reducedMotion: isReduced(),
+      onDiscover: (id) => void count('stars', id),
+      onComplete: () => void unlock('stargazer'),
+    })
   })
+  safe('arcade', initArcade)
+  safe('endscreen', initEndscreen)
+  safe('secrets', initSecrets)
+  safe('banner', initBanner)
+  safe('blips', () => initHoverBlips(() => sfx('blip')))
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true })

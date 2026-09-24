@@ -64,3 +64,6 @@ Prose uses plain punctuation (no em-dashes). curl is blocked in Bash (use node f
 - Platform 5 shows the live name SafetrexIQ, "formerly SafeIQos".
 - Prompt host renamed from `via-os` to the personal `ezb-os` so the site does not read as an employer product.
 - Deploy target (GitHub Pages needs a public repo on this plan; or the VPS) is asked at delivery.
+- Zone URLs are hash anchors (`#about`, `#inventory`) rather than the reference's real paths: works on any static
+  host and inside an Artifact with zero rewrite rules.
+- The player-card skill meter (96 / 88 / 93) is the owner's own content, labelled "self-rated" on the card.

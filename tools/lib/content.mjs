@@ -8,6 +8,13 @@ import { join } from 'node:path'
 // itself, per docs/CONTRACT.md) — safe to hardcode since CONTRACT.md is their source of truth.
 export const CONTACT_KINDS = ['cv', 'email', 'phone', 'location']
 export const GAME_IDS = ['runner', 'threathunt', 'phish', 'custody']
+// Facts from the owner's source content (previous portfolio + CV), written down independently of
+// src/content.ts so a wrong fact inside content.ts fails the suite instead of being echoed back.
+export const EXPECTED = {
+  platforms: 5, caseTypes: 8, caseStats: 3, roles: 7, rolesActive: 1, trophies: 8, impactStats: 4,
+  metrics: 21, stackGroups: 8, stackItems: 62, articles: 3, edu: 3, certs: 16, sectors: '13', banks: '24',
+}
+
 export const ZONE_IDS_EXPECTED = [
   'top', 'about', 'builds', 'cases', 'quests', 'trophies', 'inventory', 'logs', 'arcade', 'contact',
 ]

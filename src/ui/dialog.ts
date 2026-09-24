@@ -112,6 +112,7 @@ export function createDialog(opts: Opts): Dialog {
       if (!el.hidden) return
       const returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
       stack.push({ d, opts, returnTo })
+      uiRoot().append(el) // last in DOM order = painted on top of any dialog already open
       el.hidden = false
       syncLayers()
       opts.onOpen?.()
@@ -134,5 +135,3 @@ export function createDialog(opts: Opts): Dialog {
   return d
 }
 
-export const anyDialogOpen = (): boolean => stack.length > 0
-export const topDialog = (): Dialog | null => stack[stack.length - 1]?.d ?? null

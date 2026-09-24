@@ -19,7 +19,10 @@ const TIPS = [
   "I'm Sanko. I go back and fetch what the past left behind. That is the whole job, really.",
 ]
 
+let typing = 0 // generation counter: a newer line cancels the one still typing
+
 function typeInto(el: HTMLElement, text: string): void {
+  const gen = ++typing
   if (isReduced()) {
     el.textContent = text
     return
@@ -27,6 +30,7 @@ function typeInto(el: HTMLElement, text: string): void {
   el.textContent = ''
   let i = 0
   const tick = () => {
+    if (gen !== typing) return
     i += 2
     el.textContent = text.slice(0, i)
     if (i < text.length) window.setTimeout(tick, 22)
@@ -104,10 +108,15 @@ function initTraveller(): void {
     qlog.style.setProperty('--p', p.toFixed(4))
   }
   place()
+  let raf = 0
   window.addEventListener('scroll', () => {
-    place()
     if (Math.abs(window.scrollY - lastScroll) > 2) movingUntil = performance.now() + 180
     lastScroll = window.scrollY
+    if (raf) return
+    raf = requestAnimationFrame(() => {
+      raf = 0
+      place()
+    })
   }, { passive: true })
 
   loopWhenVisible(canvas, (t) => {

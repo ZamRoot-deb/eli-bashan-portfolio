@@ -93,6 +93,7 @@ function stripUnsafe(svg) {
     .replace(/\son\w+="[^"]*"/gi, '')
     .replace(/\son\w+='[^']*'/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<!DOCTYPE[^>[]*(\[[^\]]*\])?\s*>/gi, '') // no DTD machinery (entities) in shipped SVGs
     .trim()
 }
 function pngDims(buf) {

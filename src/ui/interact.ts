@@ -163,10 +163,31 @@ function initContact(): void {
     })
   }
   for (const a of $$<HTMLAnchorElement>('a[href^="mailto:"], a[href^="tel:"]')) a.addEventListener('click', () => unlock('hello-world'))
+  // Inside a claude.ai Artifact viewer plain download links are inert; there the page asks the viewer's
+  // `downloads` capability instead. On any normal host `window.claude` is absent and the link just works.
+  type Downloads = { save(r: { filename: string; data: Blob }): Promise<unknown> }
+  let downloads: Downloads | null = null
+  const host = (window as unknown as { claude?: { use?: (name: string) => Promise<unknown> } }).claude
+  if (host && typeof host.use === 'function') {
+    host.use('downloads').then((ns) => (downloads = (ns as Downloads | null) ?? null), () => undefined)
+  }
   for (const a of $$<HTMLAnchorElement>('[data-save-cv]')) {
-    a.addEventListener('click', () => {
+    a.addEventListener('click', (e) => {
       sfx('coin')
       unlock('save-game')
+      const dl = downloads
+      if (!dl) return
+      e.preventDefault()
+      fetch(a.getAttribute('href') ?? '')
+        .then((r) => {
+          if (!r.ok) throw new Error(`CV fetch ${r.status}`)
+          return r.blob()
+        })
+        .then((blob) => dl.save({ filename: 'Eli_Zamar_Bashan_CV.pdf', data: blob }))
+        .then(() => announce('CV saved'))
+        .catch((err: { code?: string }) => {
+          if (err?.code !== 'declined') announce('The CV could not be saved here. The email address is in the contact section.')
+        })
     })
   }
 }

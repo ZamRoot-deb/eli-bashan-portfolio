@@ -96,5 +96,5 @@ Run: node ~/.claude/skills/unlazy/scripts/gate-check.mjs --timeout 600
   EXPECT: PASS-PUSHED
   EVIDENCE: PASS-PUSHED
 
-- [ ] G19: Viewable link: private preview published and checked in a real browser (public deploy only with the owner's yes)
-  EVIDENCE: pending
+- [x] G19: Viewable link: private preview published and checked in a real browser (public deploy only with the owner's yes)
+  EVIDENCE: https://claude.ai/artifact/PqgiMsrA9mPMCviv78xqNC (private, v2, downloads capability for the CV). Opened in the owner's Chrome: boot sequence ran and finished, hero/title/player card/portrait/HUD/minimap rendered, clocks tick, typewriter ran, zone label follows scroll. The Chrome extension cannot deliver pointer events into the sandboxed preview frame (pointer X/Y never moved), so clicks there were not exercised; the identical build passes all 17 interaction groups headless (G3-G16, G20). Public deploy awaits the owner's yes.

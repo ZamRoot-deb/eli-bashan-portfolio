@@ -1,0 +1,7 @@
+node_modules/
+dist/
+artifact/
+.unlazy-hook-state.json
+.unlazy-strict-state.json
+.DS_Store
+tools/.shots/

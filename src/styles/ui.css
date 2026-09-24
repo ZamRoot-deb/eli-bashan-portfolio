@@ -328,6 +328,19 @@
   width: min(420px, calc(100% - 32px));
   pointer-events: none;
 }
+.toasts--top {
+  top: calc(env(safe-area-inset-top, 0px) + 6px);
+  bottom: auto;
+  width: min(360px, calc(100% - 32px));
+}
+.toasts--top .toast {
+  padding: 6px 10px;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+}
+.toasts--top .toast__icon {
+  width: 30px;
+  height: 30px;
+}
 .toast {
   --c: var(--amber);
   display: grid;

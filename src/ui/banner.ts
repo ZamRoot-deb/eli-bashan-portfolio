@@ -10,7 +10,7 @@ import { h, uiRoot } from './dom'
 export function initBanner(): void {
   let busy = false
   on('zone', ({ id, first }) => {
-    if (!first || id === 'top' || isReduced() || busy) return
+    if (!first || id === 'top' || isReduced() || busy || document.querySelector('.dlg:not([hidden])')) return
     const i = ZONES.findIndex((z) => z.id === id)
     const z = ZONES[i]
     if (!z) return

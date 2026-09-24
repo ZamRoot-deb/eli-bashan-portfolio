@@ -7,7 +7,27 @@ import { glyph, h, uiRoot } from './dom'
 
 let region: HTMLElement
 
-export function toast(kicker: string, title: string, xp: number | null, icon: Parameters<typeof glyph>[0] = 'trophy', hue = 'var(--amber)'): void {
+const gaming = (): boolean => document.querySelector('[data-game-overlay]:not([hidden])') !== null
+
+type ToastArgs = [kicker: string, title: string, xp: number | null, icon?: Parameters<typeof glyph>[0], hue?: string]
+const queue: ToastArgs[] = []
+let showingInGame = false
+
+export function toast(...args: ToastArgs): void {
+  // while a game is open, toasts sit at the top, one at a time, so they never bury the game
+  const inGame = gaming()
+  region.classList.toggle('toasts--top', inGame)
+  if (inGame) {
+    if (showingInGame) {
+      queue.push(args)
+      return
+    }
+    showingInGame = true
+  }
+  render(...args, inGame)
+}
+
+function render(kicker: string, title: string, xp: number | null, icon: Parameters<typeof glyph>[0] = 'trophy', hue = 'var(--amber)', inGame = false): void {
   const t = h(
     'div',
     { class: 'toast', 'data-toast': '', style: `--c:${hue}` },
@@ -19,8 +39,14 @@ export function toast(kicker: string, title: string, xp: number | null, icon: Pa
   while (region.children.length > 3) region.firstElementChild?.remove()
   window.setTimeout(() => {
     t.classList.add('is-out')
-    window.setTimeout(() => t.remove(), 320)
-  }, 3600)
+    window.setTimeout(() => {
+      t.remove()
+      if (!inGame) return
+      showingInGame = false
+      const next = queue.shift()
+      if (next) toast(...next)
+    }, 320)
+  }, inGame ? 2200 : 3600)
 }
 
 function levelUp(level: number): void {
@@ -38,7 +64,7 @@ export function initToasts(): void {
     sfx('powerup')
   })
   on('levelup', ({ level }) => {
-    levelUp(level)
+    if (!gaming()) levelUp(level)
     toast('LEVEL UP', `You reached level ${level}`, null, 'star', 'var(--term)')
     sfx('levelup')
   })

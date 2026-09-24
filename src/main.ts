@@ -9,6 +9,8 @@ import { initMotion, isReduced } from './core/env'
 import { storageOk } from './core/store'
 import { getLevel, getXP, unlockedIds } from './core/xp'
 import { openGame, closeGame, initArcade } from './games/arcade'
+import { initBanner, initHoverBlips } from './ui/banner'
+import { sfx } from './core/sfx'
 import type { GameId } from './games/types'
 import { runBoot } from './ui/boot'
 import { $, safe } from './ui/dom'
@@ -55,6 +57,8 @@ function start(): void {
   safe('terminal', () => initTerminal((id: GameId) => void openGame(id)))
   safe('endscreen', initEndscreen)
   safe('secrets', initSecrets)
+  safe('banner', initBanner)
+  safe('blips', () => initHoverBlips(() => sfx('blip')))
 
   window.__ezb = {
     xp: getXP,

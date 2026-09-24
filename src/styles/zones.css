@@ -92,7 +92,7 @@
   font-weight: 400;
   font-size: min(14.6vw, 8.1rem);
   line-height: 0.96;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--paper);
   font-variation-settings: 'BLED' 0, 'SCAN' 50;
   animation: title-scan 9s ease-in-out infinite;
@@ -1796,14 +1796,17 @@
   color: var(--ink);
   background: var(--amber);
   opacity: 0;
+  visibility: hidden;
   transform: translateY(4px);
   transition:
     opacity 0.15s,
-    transform 0.15s;
+    transform 0.15s,
+    visibility 0.15s;
   pointer-events: none;
 }
 .row__copy.is-copied .row__copied {
   opacity: 1;
+  visibility: visible;
   transform: none;
 }
 

@@ -54,6 +54,13 @@ const FILES: Record<string, () => Seg[][]> = {
 
 const BUILD_FILES = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]))
 
+// friendly names people will try first
+const ALIASES: Record<string, string> = {
+  about: 'bio.txt', bio: 'bio.txt', cases: 'cases.gpg', quests: 'quest_log.dat', experience: 'quest_log.dat',
+  trophies: 'trophies.txt', inventory: 'inventory.db', stack: 'inventory.db', logs: 'published.log',
+  articles: 'published.log', contact: 'contact.vcf', certs: 'certs.txt', secret: '.secret',
+}
+
 function line(...segs: Seg[]): void {
   const el = h('div')
   for (const s of segs) {
@@ -132,7 +139,7 @@ function run(raw: string): void {
         line(['stack: ' + p.stack.join(', '), 'cyan'])
         break
       }
-      const f = FILES[arg]
+      const f = FILES[arg] ?? FILES[ALIASES[arg.toLowerCase()] ?? '']
       if (f) lines(f())
       else line([`cat: ${arg}: no such file. Try ls.`, 'red'])
       break

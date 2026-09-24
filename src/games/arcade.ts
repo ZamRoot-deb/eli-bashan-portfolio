@@ -10,6 +10,7 @@ import { award, bestOf, recordRun, unlock } from '../core/xp'
 import { createDialog, type Dialog } from '../ui/dialog'
 import { $$, h } from '../ui/dom'
 import { loopWhenVisible } from '../ui/loop'
+import { toast } from '../ui/toasts'
 import type { GameAchievement, GameHost, GameId, GameInstance, GameModule } from './types'
 
 const LOADERS: Record<GameId, () => Promise<{ default: GameModule }>> = {
@@ -74,7 +75,12 @@ export async function openGame(id: GameId): Promise<void> {
 
   const host: GameHost = {
     root,
-    awardXP: (amount, reason) => award(Math.max(0, Math.min(80, amount)), `${meta?.title ?? id}: ${reason}`),
+    awardXP: (amount, reason) => {
+      const xp = Math.round(Math.max(0, Math.min(80, amount)))
+      if (!xp) return
+      award(xp, `${meta?.title ?? id}: ${reason}`)
+      toast('RUN COMPLETE', `${meta?.title ?? id}: ${reason}`, xp, 'gamepad', 'var(--term)')
+    },
     unlock: (a: GameAchievement) => void unlock(a),
     sfx,
     setScore: (n) => (scoreEl.textContent = String(n)),

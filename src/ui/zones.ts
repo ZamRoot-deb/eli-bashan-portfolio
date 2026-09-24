@@ -71,7 +71,7 @@ export function initZones(): void {
   // on load: honour a zone hash (the browser already scrolled; make sure the zone is framed)
   const initial = location.hash.slice(1)
   if (initial && ZONES.some((z) => z.id === initial)) {
-    requestAnimationFrame(() => $(`#${CSS.escape(initial)}`)?.scrollIntoView({ block: 'start' }))
+    requestAnimationFrame(() => $(`#${CSS.escape(initial)}`)?.scrollIntoView({ block: 'start', behavior: 'instant' }))
   }
 
   // in-page zone links get the warp treatment

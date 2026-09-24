@@ -923,3 +923,40 @@
   font-family: var(--f-term);
   font-size: 22px;
 }
+
+/* zone discovery title card */
+.zbanner {
+  --c: var(--term);
+  position: fixed;
+  z-index: 88;
+  top: 42%;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: min(560px, calc(100% - 32px));
+  padding: 16px 28px 18px;
+  background: rgba(4, 7, 10, 0.9);
+  border-block: 3px solid var(--c);
+  box-shadow: 0 0 60px color-mix(in srgb, var(--c) 30%, transparent);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.zbanner__n {
+  font-family: var(--f-pixel);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--c);
+}
+.zbanner__name {
+  font-family: var(--f-display);
+  font-size: clamp(26px, 5vw, 46px);
+  line-height: 1.1;
+  color: var(--paper);
+  text-shadow: 0 0 20px color-mix(in srgb, var(--c) 60%, transparent);
+}
+.zbanner__xp {
+  font-family: var(--f-pixel);
+  font-size: 9px;
+  color: var(--amber);
+}

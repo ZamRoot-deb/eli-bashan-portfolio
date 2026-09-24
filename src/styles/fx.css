@@ -1,0 +1,160 @@
+/* Atmosphere: cosmic sky, CRT glass, glitch, sparks. Decorative layers never take pointer events. */
+
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sky__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.sky__nebula {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 32% at 18% 22%, rgba(167, 139, 255, 0.13), transparent 70%),
+    radial-gradient(34% 28% at 82% 30%, rgba(69, 230, 255, 0.09), transparent 70%),
+    radial-gradient(46% 36% at 60% 88%, rgba(255, 79, 216, 0.08), transparent 70%),
+    radial-gradient(30% 26% at 30% 70%, rgba(77, 255, 158, 0.06), transparent 70%);
+  animation: nebula 48s ease-in-out infinite alternate;
+}
+@keyframes nebula {
+  to {
+    transform: translate3d(3%, -2%, 0) rotate(4deg) scale(1.06);
+  }
+}
+
+.world {
+  position: relative;
+  z-index: 1;
+}
+
+/* CRT glass over everything: scanlines, vignette, a faint flicker and a rolling bar. */
+.crt {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.55) 100%);
+  animation: crt-flicker 5s steps(1, end) infinite;
+}
+.crt::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 18vh;
+  top: -20vh;
+  background: linear-gradient(to bottom, transparent, rgba(77, 255, 158, 0.035), transparent);
+  animation: roll 9s linear infinite;
+}
+@keyframes crt-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  47% {
+    opacity: 0.94;
+  }
+  48% {
+    opacity: 1;
+  }
+  73% {
+    opacity: 0.97;
+  }
+}
+@keyframes roll {
+  to {
+    transform: translateY(140vh);
+  }
+}
+
+/* Glitch: RGB split jitter, triggered by adding .is-glitching (JS) or on hover where used. */
+.is-glitching {
+  animation: glitch 0.42s steps(2, jump-none) 1;
+}
+@keyframes glitch {
+  0% {
+    text-shadow: 3px 0 var(--magenta), -3px 0 var(--cyan);
+    transform: translate(1px, -1px);
+  }
+  25% {
+    text-shadow: -3px 0 var(--magenta), 3px 0 var(--cyan);
+    transform: translate(-2px, 1px) skewX(-6deg);
+  }
+  50% {
+    text-shadow: 2px 1px var(--magenta), -2px -1px var(--cyan);
+    transform: translate(2px, 0);
+    clip-path: inset(10% 0 45% 0);
+  }
+  75% {
+    text-shadow: -2px 0 var(--magenta), 2px 0 var(--cyan);
+    transform: translate(0, 1px);
+    clip-path: inset(55% 0 5% 0);
+  }
+  100% {
+    text-shadow: none;
+    transform: none;
+    clip-path: none;
+  }
+}
+
+/* Click sparks (spawned by src/ui/sparks.ts). */
+.spark {
+  position: fixed;
+  z-index: 96;
+  width: 6px;
+  height: 6px;
+  pointer-events: none;
+  background: var(--c, var(--amber));
+  box-shadow: 0 0 8px var(--c, var(--amber));
+}
+
+/* Scan sweep across a panel. */
+.sweep {
+  position: relative;
+  overflow: hidden;
+}
+.sweep::after {
+  content: '';
+  position: absolute;
+  inset: -40% 0 auto 0;
+  height: 40%;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--c, var(--term)) 12%, transparent), transparent);
+  animation: sweep 5.5s linear infinite;
+  pointer-events: none;
+}
+@keyframes sweep {
+  to {
+    transform: translateY(360%);
+  }
+}
+
+/* Reduced motion: stop every ambient loop; interactions stay instant. */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

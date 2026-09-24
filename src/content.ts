@@ -160,8 +160,10 @@ export const CASEWORK = {
 
 export interface Role {
   period: string
-  start: number
-  end: number | null
+  /** 'YYYY-MM' first month in the role */
+  from: string
+  /** 'YYYY-MM' last month in the role, null while active */
+  to: string | null
   active: boolean
   title: string
   org: string
@@ -180,8 +182,8 @@ export const EXPERIENCE = {
 export const ROLES: Role[] = [
   {
     period: 'Feb 2025 to present',
-    start: 2025.1,
-    end: null,
+    from: '2025-02',
+    to: null,
     active: true,
     title: 'DFIR Lead',
     org: 'Virtual InfoSec Africa',
@@ -198,8 +200,8 @@ export const ROLES: Role[] = [
   },
   {
     period: 'Jan 2024 to Jan 2025',
-    start: 2024.0,
-    end: 2025.0,
+    from: '2024-01',
+    to: '2025-01',
     active: false,
     title: 'Digital Forensic Analyst, Level 1',
     org: 'Virtual InfoSec Africa',
@@ -212,8 +214,8 @@ export const ROLES: Role[] = [
   },
   {
     period: 'Aug 2022 to Dec 2023',
-    start: 2022.6,
-    end: 2023.95,
+    from: '2022-08',
+    to: '2023-12',
     active: false,
     title: 'Digital Forensics Examiner / Consultant',
     org: 'Self-Employed',
@@ -226,8 +228,8 @@ export const ROLES: Role[] = [
   },
   {
     period: 'Jan 2023 to Dec 2023',
-    start: 2023.0,
-    end: 2023.95,
+    from: '2023-01',
+    to: '2023-12',
     active: false,
     title: 'Volunteer Contributor',
     org: 'Atomic Red Team Community',
@@ -239,8 +241,8 @@ export const ROLES: Role[] = [
   },
   {
     period: 'Jan 2023 to Mar 2023',
-    start: 2023.0,
-    end: 2023.2,
+    from: '2023-01',
+    to: '2023-03',
     active: false,
     title: 'Cybersecurity Administrator',
     org: 'Virtually Testing Foundation',
@@ -250,8 +252,8 @@ export const ROLES: Role[] = [
   },
   {
     period: 'Mar 2022 to Aug 2023',
-    start: 2022.2,
-    end: 2023.6,
+    from: '2022-03',
+    to: '2023-08',
     active: false,
     title: 'Laboratory / XRF Technician, IT Support',
     org: 'Sahara Natural Resources',
@@ -261,8 +263,8 @@ export const ROLES: Role[] = [
   },
   {
     period: 'Sep 2019 to Sep 2020',
-    start: 2019.7,
-    end: 2020.7,
+    from: '2019-09',
+    to: '2020-09',
     active: false,
     title: 'Information Systems Engineer',
     org: 'Sefwi Wiawso Nursing Training School',
@@ -392,6 +394,19 @@ export const CERTS: Cert[] = [
   { name: 'ISO/IEC 27001 Information Security Associate', issuer: 'iso' },
   { name: 'ISO/IEC 20000 IT Service Management Associate', issuer: 'iso' },
 ]
+
+export const ARCADE = {
+  cmd: 'ls /arcade --cabinets',
+  eyebrow: 'Arcade',
+  title: 'Four cabinets. Every one of them is the job, played fast.',
+  sub: 'Each run earns XP for the player card up top. Best scores stay on this device.',
+  games: [
+    { id: 'runner', title: 'Evidence Runner', blurb: 'Sanko sprints through a data centre at night. Jump the malware, grab the evidence.', controls: 'SPACE / TAP to jump', hue: 'amber' as Hue },
+    { id: 'threathunt', title: 'Threat Hunt', blurb: 'Nine hosts, one round. Quarantine the threats and spare the legit processes.', controls: '1-9 / CLICK to quarantine', hue: 'red' as Hue },
+    { id: 'phish', title: 'Phish or Legit', blurb: 'Eight messages. Swipe left on the phish, right on the real ones.', controls: 'LEFT / RIGHT or SWIPE', hue: 'cyan' as Hue },
+    { id: 'custody', title: 'Chain of Custody', blurb: 'Six phases, one defensible order. The court is watching.', controls: '1-6 / CLICK in order', hue: 'violet' as Hue },
+  ] as const,
+}
 
 export const CONTACT = {
   cmd: './start_new_game --with-you',

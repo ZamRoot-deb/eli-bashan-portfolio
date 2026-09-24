@@ -366,6 +366,14 @@
   gap: 14px;
   min-width: 0;
 }
+.guide__poke {
+  flex: none;
+  display: block;
+  line-height: 0;
+}
+.guide__poke:hover .guide__sprite {
+  filter: drop-shadow(0 0 8px rgba(255, 215, 95, 0.5));
+}
 .guide__sprite {
   flex: none;
   width: 96px;

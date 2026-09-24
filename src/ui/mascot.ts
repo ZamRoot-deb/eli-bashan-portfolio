@@ -66,7 +66,8 @@ function initGuide(): void {
     sfx('jump')
   }
 
-  canvas.addEventListener('click', () => {
+  const poke = wrap.querySelector<HTMLButtonElement>('.guide__poke') ?? canvas
+  poke.addEventListener('click', () => {
     hop()
     // bounded: only the first five pokes are recorded
     if (counted('sanko-pets').length < 5 && count('sanko-pets', String(Date.now())) >= 5) unlock('sanko')

@@ -128,7 +128,7 @@ function hero(): string {
   </div>
   <div class="hero__foot">
     <div class="guide" data-mascot data-mascot-role="guide">
-      <canvas class="guide__sprite" width="96" height="96" aria-hidden="true"></canvas>
+      <button class="guide__poke" type="button" aria-label="Say hello to Sanko"><canvas class="guide__sprite" width="96" height="96" aria-hidden="true"></canvas></button>
       <p class="guide__bubble" data-guide-bubble>I'm Sanko. I go back and fetch what the past left behind. Scroll to play, or press <kbd>\`</kbd> for the terminal.</p>
     </div>
     <a class="press-start" href="#about" data-press-start>${glyph('play')}<span>Press start</span></a>

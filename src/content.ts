@@ -16,6 +16,7 @@ export const PROFILE = {
   timeZone: 'Africa/Accra',
   coords: '5.5560° N, 0.1969° W',
   mapsUrl: 'https://maps.google.com/?q=Accra,Ghana',
+  siteUrl: 'https://zamroot-deb.github.io/eli-bashan-portfolio/',
   email: 'elibashan@yahoo.com',
   phone: '+233 (0) 54 145 3098',
   phoneHref: 'tel:+233541453098',

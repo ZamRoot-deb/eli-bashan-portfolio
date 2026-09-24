@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://zamroot-deb.github.io/eli-bashan-portfolio/sitemap.xml

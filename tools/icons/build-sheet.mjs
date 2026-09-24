@@ -10,7 +10,9 @@ import { STACK_ICONS, CERT_ICONS } from './manifest-data.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '../..')
-const require = createRequire('/path/to/a-project-with-puppeteer-core/package.json')
+// puppeteer-core is not a dependency of this repo: point PUPPETEER_CORE_DIR at any project that has it
+// installed (e.g. PUPPETEER_CORE_DIR=~/some-project), or install it globally resolvable from here.
+const require = createRequire(path.join(process.env.PUPPETEER_CORE_DIR || ROOT, 'package.json'))
 const puppeteer = require('puppeteer-core')
 
 // Same order/grouping as STACK_GROUPS in src/content.ts.

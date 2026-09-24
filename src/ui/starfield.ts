@@ -142,10 +142,14 @@ export function initStarfield(): void {
   if (isReduced()) still()
   else start()
 
+  // mobile browsers fire resize when the URL bar slides; only rebuild on a real size change
   let resizeT = 0
   window.addEventListener('resize', () => {
     window.clearTimeout(resizeT)
     resizeT = window.setTimeout(() => {
+      const dw = Math.abs(window.innerWidth - w)
+      const dh = Math.abs(window.innerHeight - h) / Math.max(1, h)
+      if (dw < 2 && dh < 0.25) return
       build()
       if (isReduced()) still()
     }, 120)

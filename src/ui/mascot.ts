@@ -5,7 +5,7 @@ import { on } from '../core/bus'
 import { isReduced } from '../core/env'
 import { HUE, LINE, rgba } from '../core/palette'
 import { sfx } from '../core/sfx'
-import { count, unlock } from '../core/xp'
+import { count, counted, unlock } from '../core/xp'
 import { BUG, FLOPPY, SANKO, drawSprite, type Sprite } from '../core/sprites'
 import { $ } from './dom'
 import { fitCanvas, loopWhenVisible } from './loop'
@@ -68,8 +68,8 @@ function initGuide(): void {
 
   canvas.addEventListener('click', () => {
     hop()
-    const n = count('sanko-pets', String(Date.now()))
-    if (n >= 5) unlock('sanko')
+    // bounded: only the first five pokes are recorded
+    if (counted('sanko-pets').length < 5 && count('sanko-pets', String(Date.now())) >= 5) unlock('sanko')
     tip = (tip + 1) % TIPS.length
     typeInto(bubble, TIPS[tip])
   })

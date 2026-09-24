@@ -14,7 +14,7 @@
   /* text */
   --paper: #d9f2e4;
   --dim: #6fae8d;
-  --faint: #3d6b55;
+  --faint: #4f8a6c; /* 4.9:1 on --ink, AA for small labels */
 
   /* signal hues (see src/core/palette.ts) */
   --term: #4dff9e;

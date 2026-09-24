@@ -8,7 +8,7 @@ export const PANEL_2 = '#0f1a20' // hover / nested surface
 export const LINE = '#17563a' // hairlines, faint borders
 export const PAPER = '#d9f2e4' // primary text
 export const DIM = '#6fae8d' // secondary text
-export const FAINT = '#3d6b55' // tertiary text, disabled
+export const FAINT = '#4f8a6c' // tertiary text, disabled
 
 export const HUE: Record<Hue, string> = {
   term: '#4dff9e', // phosphor green: terminal, primary accent

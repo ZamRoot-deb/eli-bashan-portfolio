@@ -4,7 +4,7 @@
 // here from the shared sprite palette; no third-party sprites.
 import type { GameHost, GameInstance, GameModule } from './types'
 import { SANKO, FLOPPY, BUG, drawSprite, type Sprite } from '../core/sprites'
-import { INK, PANEL, LINE, PAPER, DIM, HUE, rgba } from '../core/palette'
+import { INK, PANEL, PANEL_2, LINE, PAPER, DIM, FAINT, HUE, rgba } from '../core/palette'
 import './runner.css'
 
 /** Ransomware padlock (taller ground enemy). 12x15, original pixel art from the shared palette. */
@@ -51,6 +51,10 @@ const CRASH_FREEZE_MS = 260
 const CRASH_FREEZE_MS_RM = 170
 const SHAKE_MS = 180
 const FLASH_MS = 120
+
+// ---- background scene ------------------------------------------------------------------------
+const SKY_TOP = '#120f2b' // deep indigo, sky gradient top (no exact match in the shared palette)
+const RACK_GLOW_BAND_H = 140 // cyan ambient glow band height behind the rack skyline
 
 // ---- small helpers -----------------------------------------------------------------------------
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
@@ -104,6 +108,15 @@ interface Popup {
   maxLife: number
   text: string
   color: string
+}
+/** Ambient sky flourish: a short bright line crossing the canvas every few seconds. */
+interface PacketStreak {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
 }
 
 class RunnerGame implements GameInstance {
@@ -162,6 +175,15 @@ class RunnerGame implements GameInstance {
   private freezeUntil = 0
   private shakeUntil = 0
   private flashUntil = 0
+
+  // background scene: gradients are cached per resize (never created per frame); the moon is
+  // pre-rendered to an offscreen canvas per resize too, so a per-frame draw is one drawImage.
+  private skyGradient: CanvasGradient | null = null
+  private rackGlowGradient: CanvasGradient | null = null
+  private moonCanvas: HTMLCanvasElement | null = null
+  private moonRadius = 24
+  private packetTimer = rand(4, 8)
+  private packetStreak: PacketStreak | null = null
 
   constructor(host: GameHost) {
     this.host = host
@@ -314,6 +336,69 @@ class RunnerGame implements GameInstance {
 
     this.root.style.setProperty('--rn-w', `${this.cssW}px`)
     this.root.style.setProperty('--rn-h', `${this.cssH}px`)
+
+    // Gradients and the moon's pixel art are expensive to build but cheap to reuse: cache them
+    // here (resize only, never per frame) and just fill/drawImage the cached result each frame.
+    const sky = this.ctx.createLinearGradient(0, 0, 0, this.groundY)
+    sky.addColorStop(0, SKY_TOP)
+    sky.addColorStop(1, INK)
+    this.skyGradient = sky
+
+    const glowTop = Math.max(0, this.groundY - RACK_GLOW_BAND_H)
+    const rackGlow = this.ctx.createLinearGradient(0, glowTop, 0, this.groundY)
+    rackGlow.addColorStop(0, rgba(HUE.cyan, 0))
+    rackGlow.addColorStop(0.65, rgba(HUE.cyan, 0.09))
+    rackGlow.addColorStop(1, rgba(HUE.cyan, 0))
+    this.rackGlowGradient = rackGlow
+
+    this.moonRadius = clamp(this.cssW * 0.035, 16, 32)
+    this.buildMoonCanvas(this.moonRadius)
+  }
+
+  /** Pre-renders the ringed-planet art (halo, ring, body, craters -- all fillRect, no vector arcs)
+   *  once per resize onto an offscreen canvas, so the per-frame cost is a single drawImage. */
+  private buildMoonCanvas(radius: number): void {
+    const size = Math.ceil(radius * 4.4)
+    const c = document.createElement('canvas')
+    c.width = size
+    c.height = size
+    const mctx = c.getContext('2d')
+    if (!mctx) return
+    const cx = size / 2
+    const cy = size / 2
+    const block = Math.max(2, Math.round(this.scale * 0.8))
+
+    const pixelDisc = (r: number, color: string, b: number, ox = 0, oy = 0): void => {
+      mctx.fillStyle = color
+      for (let y = -r; y <= r; y += b) {
+        for (let x = -r; x <= r; x += b) {
+          if (x * x + y * y <= r * r) mctx.fillRect(Math.round(cx + ox + x), Math.round(cy + oy + y), b, b)
+        }
+      }
+    }
+
+    pixelDisc(radius * 1.9, rgba(HUE.violet, 0.06), Math.max(4, block * 2))
+    pixelDisc(radius * 1.35, rgba(HUE.violet, 0.1), Math.max(3, Math.round(block * 1.5)))
+
+    const rx = radius * 1.6
+    const ry = radius * 0.42
+    const tilt = -0.34
+    mctx.fillStyle = rgba(HUE.cyan, 0.6)
+    const steps = 40
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * Math.PI * 2
+      const ex = Math.cos(a) * rx
+      const ey = Math.sin(a) * ry
+      const x = ex * Math.cos(tilt) - ey * Math.sin(tilt)
+      const y = ex * Math.sin(tilt) + ey * Math.cos(tilt)
+      mctx.fillRect(Math.round(cx + x), Math.round(cy + y), block, block)
+    }
+
+    pixelDisc(radius, rgba(PAPER, 0.95), block)
+    pixelDisc(radius * 0.2, rgba(FAINT, 0.75), block, -radius * 0.35, -radius * 0.2)
+    pixelDisc(radius * 0.14, rgba(FAINT, 0.75), block, radius * 0.32, radius * 0.3)
+
+    this.moonCanvas = c
   }
 
   // ---- input ----------------------------------------------------------------------------------
@@ -654,6 +739,42 @@ class RunnerGame implements GameInstance {
       p.life -= dt
     }
     this.popups = this.popups.filter((p) => p.life > 0)
+
+    this.updatePacketStreak(dt)
+  }
+
+  private spawnPacketStreak(): void {
+    const y = rand(16, Math.max(28, this.groundY * 0.5))
+    const fromLeft = Math.random() < 0.5
+    const speed = rand(520, 760)
+    this.packetStreak = {
+      x: fromLeft ? -30 : this.cssW + 30,
+      y,
+      vx: fromLeft ? speed : -speed,
+      vy: rand(-30, 30),
+      life: 0.5,
+      maxLife: 0.5,
+    }
+  }
+
+  /** host.reducedMotion: no streaks at all (spawn is skipped and any in flight is cleared). */
+  private updatePacketStreak(dt: number): void {
+    if (this.host.reducedMotion) {
+      this.packetStreak = null
+      return
+    }
+    if (this.packetStreak) {
+      this.packetStreak.x += this.packetStreak.vx * dt
+      this.packetStreak.y += this.packetStreak.vy * dt
+      this.packetStreak.life -= dt
+      if (this.packetStreak.life <= 0) this.packetStreak = null
+    } else {
+      this.packetTimer -= dt
+      if (this.packetTimer <= 0) {
+        this.spawnPacketStreak()
+        this.packetTimer = rand(4, 8)
+      }
+    }
   }
 
   private updateAmbient(dt: number): void {
@@ -691,29 +812,78 @@ class RunnerGame implements GameInstance {
   }
 
   // ---- render -----------------------------------------------------------------------------------
-  private drawStars(now: number): void {
+  /** One parallax star layer; drawStars below calls this twice (far + near) for depth. */
+  private drawStarLayer(now: number, tile: number, factor: number, count: number, sizeMax: number, aBase: number, aRange: number): void {
     const ctx = this.ctx
-    const tile = 200
-    const factor = 0.12
     const scrollX = (this.distance * factor) % tile
     const start = Math.floor(-scrollX / tile) - 1
     const skyH = Math.max(10, this.groundY - 30)
     for (let i = start; i * tile - scrollX < this.cssW + tile; i++) {
       const baseX = i * tile - scrollX
-      for (let s = 0; s < 6; s++) {
-        const h1 = hash01(i * 12.9898 + s * 3.233)
-        const h2 = hash01(i * 78.233 + s * 5.71 + 0.5)
-        const h3 = hash01(i * 4.11 + s * 1.73 + 0.25)
+      for (let s = 0; s < count; s++) {
+        const h1 = hash01(i * 12.9898 + s * 3.233 + tile)
+        const h2 = hash01(i * 78.233 + s * 5.71 + 0.5 + tile)
+        const h3 = hash01(i * 4.11 + s * 1.73 + 0.25 + tile)
         const x = baseX + h1 * tile
         const y = 10 + h2 * skyH
-        const r = 1 + Math.floor(h3 * 2)
+        const r = 1 + Math.floor(h3 * sizeMax)
         const twinkle = this.host.reducedMotion
-          ? 0.75
+          ? 0.72
           : 0.4 + 0.6 * Math.abs(Math.sin(now * 0.0015 + i * 12.3 + s))
-        ctx.fillStyle = rgba(PAPER, 0.12 + 0.45 * twinkle)
+        ctx.fillStyle = rgba(PAPER, aBase + aRange * twinkle)
         ctx.fillRect(Math.round(x), Math.round(y), r, r)
       }
     }
+  }
+
+  /** Two parallax layers: a dim, sparse, slow-moving far field and a brighter, denser near field. */
+  private drawStars(now: number): void {
+    this.drawStarLayer(now, 260, 0.05, 4, 1, 0.08, 0.18)
+    this.drawStarLayer(now, 170, 0.15, 7, 2, 0.16, 0.5)
+  }
+
+  /** Large ringed planet, upper right. Pre-rendered in buildMoonCanvas; this just positions it
+   *  (a slow independent drift, disabled under reducedMotion) and blits it with one drawImage. */
+  private drawMoon(now: number): void {
+    if (!this.moonCanvas) return
+    const radius = this.moonRadius
+    const baseX = this.cssW - radius * 2.8
+    const baseY = radius * 2.0 + 24
+    let dx = 0
+    let dy = 0
+    if (!this.host.reducedMotion) {
+      dx = Math.sin(now * 0.00006) * radius * 0.6
+      dy = Math.cos(now * 0.00004) * radius * 0.35
+    }
+    const size = this.moonCanvas.width
+    this.ctx.drawImage(this.moonCanvas, Math.round(baseX + dx - size / 2), Math.round(baseY + dy - size / 2))
+  }
+
+  /** Ambient data-packet streak crossing the sky; spawned/ticked in updatePacketStreak. */
+  private drawPacketStreak(): void {
+    const p = this.packetStreak
+    if (!p) return
+    const ctx = this.ctx
+    const a = clamp(p.life / p.maxLife, 0, 1)
+    const dirX = p.vx < 0 ? -1 : 1
+    const len = 30
+    const tailX = p.x - dirX * len
+    const tailY = p.y - (p.vy / 650) * len
+    ctx.save()
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = rgba(HUE.cyan, 0.14 * a)
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.moveTo(p.x, p.y)
+    ctx.lineTo(tailX, tailY)
+    ctx.stroke()
+    ctx.strokeStyle = rgba(PAPER, 0.85 * a)
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(p.x, p.y)
+    ctx.lineTo(tailX, tailY)
+    ctx.stroke()
+    ctx.restore()
   }
 
   private drawRacks(now: number): void {
@@ -723,34 +893,90 @@ class RunnerGame implements GameInstance {
     const scrollX = (this.distance * factor) % tile
     const start = Math.floor(-scrollX / tile) - 1
     const topY = this.groundY
+
+    if (this.rackGlowGradient) {
+      ctx.fillStyle = this.rackGlowGradient
+      ctx.fillRect(0, Math.max(0, topY - RACK_GLOW_BAND_H), this.cssW, Math.min(topY, RACK_GLOW_BAND_H))
+    }
+
+    const ledHues = [HUE.term, HUE.amber, HUE.red]
     for (let i = start; i * tile - scrollX < this.cssW + tile; i++) {
       const baseX = i * tile - scrollX
       const hgt = 40 + hash01(i * 3.3) * 70
       const rw = 46
       const rx = baseX + (tile - rw) / 2
       const ry = topY - hgt
-      ctx.fillStyle = rgba(PANEL, 0.9)
+      ctx.fillStyle = PANEL_2
       ctx.fillRect(rx, ry, rw, hgt)
-      ctx.strokeStyle = rgba(LINE, 0.7)
+      ctx.strokeStyle = rgba(LINE, 0.95)
       ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, hgt - 1)
       for (let l = 0; l < 3; l++) {
         const lx = rx + 6 + (l % 2) * (rw - 16)
         const ly = ry + 10 + l * 14
         if (ly > topY - 8) continue
+        const hue = ledHues[Math.floor(hash01(i * 5.7 + l * 1.9) * ledHues.length)]
         const phase = hash01(i * 7.1 + l * 2.3) * Math.PI * 2
         const on = this.host.reducedMotion ? true : Math.sin(now * 0.004 + phase) > 0.2
-        ctx.fillStyle = on ? rgba(HUE.term, 0.9) : rgba(HUE.term, 0.15)
+        if (on) {
+          ctx.fillStyle = rgba(hue, 0.22)
+          ctx.fillRect(lx - 2, ly - 2, 7, 7)
+        }
+        ctx.fillStyle = on ? rgba(hue, 0.95) : rgba(hue, 0.18)
         ctx.fillRect(lx, ly, 3, 3)
       }
     }
   }
 
-  private drawGround(): void {
+  /** Synthwave floor: static rails converging on a horizon vanishing point plus rows that scroll
+   *  with world distance -- so under reducedMotion it still moves exactly as much as gameplay
+   *  already does, and no more. Drawn between the ground fill and the bright horizon line/tiles. */
+  private drawGrid(): void {
+    const ctx = this.ctx
+    const vpX = this.cssW / 2
+    const vpY = this.groundY
+    const bottomY = this.cssH
+    const bandH = bottomY - vpY
+    if (bandH <= 2) return
+
+    const fanLeft = -this.cssW * 0.3
+    const fanRight = this.cssW * 1.3
+    const nV = 9
+    ctx.strokeStyle = rgba(HUE.violet, 0.16)
+    for (let i = 0; i <= nV; i++) {
+      const tx = lerp(fanLeft, fanRight, i / nV)
+      ctx.beginPath()
+      ctx.moveTo(vpX, vpY)
+      ctx.lineTo(tx, bottomY)
+      ctx.stroke()
+    }
+
+    const nRows = 4
+    const period = 46
+    const scrollT = (this.distance % period) / period
+    ctx.strokeStyle = rgba(HUE.term, 0.2)
+    for (let r = 0; r < nRows; r++) {
+      const frac = ((r + scrollT) % nRows) / nRows
+      const y = vpY + bandH * frac * frac
+      const p = (y - vpY) / bandH
+      const leftX = lerp(vpX, fanLeft, p)
+      const rightX = lerp(vpX, fanRight, p)
+      ctx.beginPath()
+      ctx.moveTo(leftX, y)
+      ctx.lineTo(rightX, y)
+      ctx.stroke()
+    }
+  }
+
+  private drawGroundFill(): void {
+    const ctx = this.ctx
+    ctx.fillStyle = PANEL
+    ctx.fillRect(0, this.groundY, this.cssW, this.cssH - this.groundY)
+  }
+
+  private drawGroundLine(): void {
     const ctx = this.ctx
     const w = this.cssW
     const y = this.groundY
-    ctx.fillStyle = PANEL
-    ctx.fillRect(0, y, w, this.cssH - y)
     ctx.strokeStyle = rgba(HUE.term, 0.55)
     ctx.beginPath()
     ctx.moveTo(0, y + 0.5)
@@ -766,6 +992,18 @@ class RunnerGame implements GameInstance {
       ctx.lineTo(x, y + 10)
       ctx.stroke()
     }
+  }
+
+  /** Low-alpha rect halo behind an obstacle/floppy so it pops against the busier scene -- two
+   *  flat rects, not a canvas blur filter (cheap, and crisp like the rest of the pixel art). */
+  private drawHalo(x: number, y: number, w: number, h: number, color: string): void {
+    const ctx = this.ctx
+    const pad1 = Math.max(4, this.scale * 2.2)
+    const pad2 = Math.max(2, this.scale)
+    ctx.fillStyle = rgba(color, 0.08)
+    ctx.fillRect(x - pad1, y - pad1, w + pad1 * 2, h + pad1 * 2)
+    ctx.fillStyle = rgba(color, 0.16)
+    ctx.fillRect(x - pad2, y - pad2, w + pad2 * 2, h + pad2 * 2)
   }
 
   private drawPlayer(): void {
@@ -788,18 +1026,34 @@ class RunnerGame implements GameInstance {
   private drawHud(): void {
     if (this.root.dataset.state !== 'playing') return
     const ctx = this.ctx
-    const pad = 10
+    const pad = 14
     const score = Math.floor(this.scoreFloat)
-    ctx.fillStyle = rgba(PANEL, 0.7)
-    ctx.fillRect(pad - 6, pad - 4, 128, 38)
-    ctx.strokeStyle = rgba(LINE, 0.8)
-    ctx.strokeRect(pad - 5.5, pad - 3.5, 127, 37)
+
+    // Everything here (font/align/baseline/shadow) is scoped by this save/restore so none of it
+    // leaks into the next frame's draws (e.g. the popup text, which relies on canvas defaults).
+    ctx.save()
+    ctx.textBaseline = 'top'
+    ctx.textAlign = 'left'
     ctx.fillStyle = DIM
-    ctx.font = '9px "Press Start 2P", monospace'
-    ctx.fillText('SCORE', pad, pad + 8)
+    ctx.font = '8px "Press Start 2P", monospace'
+    ctx.fillText('SCORE', pad, pad)
+
+    ctx.shadowColor = rgba(HUE.term, 0.9)
+    ctx.shadowBlur = 12
     ctx.fillStyle = PAPER
+    ctx.font = `${Math.round(18 + this.scale * 3)}px "Sixtyfour", monospace`
+    ctx.fillText(String(score), pad, pad + 11)
+    ctx.shadowBlur = 0
+
+    const speedLevel = 1 + Math.min(5, Math.floor(((this.speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED)) * 5))
+    ctx.textAlign = 'right'
+    ctx.fillStyle = DIM
+    ctx.font = '8px "Press Start 2P", monospace'
+    ctx.fillText('SPEED', this.cssW - pad, pad)
+    ctx.fillStyle = HUE.amber
     ctx.font = '22px "VT323", monospace'
-    ctx.fillText(String(score), pad, pad + 32)
+    ctx.fillText(`${speedLevel}`, this.cssW - pad, pad + 11)
+    ctx.restore()
   }
 
   private render(now: number): void {
@@ -815,18 +1069,26 @@ class RunnerGame implements GameInstance {
 
     ctx.fillStyle = INK
     ctx.fillRect(-20, -20, w + 40, h + 40)
+    ctx.fillStyle = this.skyGradient ?? SKY_TOP
+    ctx.fillRect(-20, -20, w + 40, this.groundY + 20)
 
     this.drawStars(now)
+    this.drawMoon(now)
+    this.drawPacketStreak()
     this.drawRacks(now)
-    this.drawGround()
+    this.drawGroundFill()
+    this.drawGrid()
+    this.drawGroundLine()
 
     for (const f of this.floppies) {
       if (f.taken) continue
       const bob = Math.sin(now * 0.006 + f.x * 0.05) * this.scale * 0.6
+      this.drawHalo(f.x, f.y + bob, 12 * this.scale, 12 * this.scale, HUE.amber)
       drawSprite(ctx, FLOPPY, f.x, f.y + bob, this.scale)
     }
 
     for (const o of this.obstacles) {
+      this.drawHalo(o.x, o.y, o.w, o.h, o.kind === 'bug' ? HUE.magenta : HUE.red)
       drawSprite(ctx, o.kind === 'bug' ? BUG : PADLOCK, o.x, o.y, this.scale)
     }
 

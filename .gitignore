@@ -5,3 +5,4 @@ artifact/
 .unlazy-strict-state.json
 .DS_Store
 tools/.shots/
+.claude/

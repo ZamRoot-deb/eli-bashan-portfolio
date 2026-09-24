@@ -86,12 +86,13 @@ function initReveals(): void {
         const parent = el.parentElement ?? document.body
         const n = groups.get(parent) ?? 0
         groups.set(parent, n + 1)
+        // small, quick offsets: cards that hold buttons must not jump away from a pointer
         el.animate(
           [
-            { transform: 'translateY(26px) scale(0.985)', filter: 'brightness(1.8) saturate(0.4)' },
+            { transform: 'translateY(12px)', filter: 'brightness(1.8) saturate(0.4)' },
             { transform: 'none', filter: 'none' },
           ],
-          { duration: 520, delay: Math.min(n, 6) * 70, easing: 'steps(7, end)', fill: 'backwards' },
+          { duration: 420, delay: Math.min(n, 3) * 45, easing: 'steps(6, end)', fill: 'backwards' },
         )
       }
     },

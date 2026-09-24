@@ -1,0 +1,252 @@
+/* Impact constellation: star-map of delivered metrics (Trophies zone centrepiece).
+   Scoped entirely under elements this module creates or the pre-rendered list it enhances.
+   Does not style the bare `.constellation` root: that container belongs to the page shell. */
+
+.constellation__stage {
+  position: relative;
+  width: 100%;
+  height: 560px;
+  border: 1px solid var(--line, #17563a);
+  border-radius: 4px;
+  overflow: hidden;
+  background: radial-gradient(120% 100% at 50% 38%, #0c1620 0%, #070c10 55%, #04070a 100%);
+  touch-action: pan-y;
+}
+
+@media (max-width: 699px) {
+  .constellation__stage {
+    height: 460px;
+  }
+}
+
+.constellation__canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: default;
+}
+
+.constellation__canvas.is-hoverable {
+  cursor: pointer;
+}
+
+.constellation__canvas.is-dragging {
+  cursor: grabbing;
+}
+
+/* Stars-mapped counter chip */
+.constellation__counter {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 6px 9px;
+  background: rgba(10, 16, 20, 0.82);
+  border: 1px solid var(--line, #17563a);
+  border-radius: 3px;
+  color: var(--dim, #6fae8d);
+  font-family: 'Press Start 2P', 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.constellation__counter b {
+  color: var(--term, #4dff9e);
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .constellation__counter.is-complete {
+    animation: ezb-const-pulse 900ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation__counter.is-complete {
+    background: var(--amber, #ffd75f);
+    color: #04070a;
+    border-color: var(--amber, #ffd75f);
+  }
+  .constellation__counter.is-complete b {
+    color: #04070a;
+  }
+}
+
+@keyframes ezb-const-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 95, 0.55);
+    border-color: var(--amber, #ffd75f);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 215, 95, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 95, 0);
+    border-color: var(--line, #17563a);
+  }
+}
+
+/* Floating info card */
+.constellation__card {
+  position: absolute;
+  z-index: 3;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  max-width: 320px;
+  padding: 10px 12px;
+  background: rgba(8, 13, 16, 0.92);
+  border: 1px solid var(--card-hue, var(--line, #17563a));
+  border-radius: 4px;
+  color: var(--paper, #d9f2e4);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .constellation__card {
+    transition: opacity 180ms ease;
+  }
+}
+
+.constellation__card[data-state='active'] {
+  opacity: 1;
+}
+
+.constellation__card-value {
+  display: block;
+  font-family: 'Sixtyfour', 'IBM Plex Mono', monospace;
+  font-size: clamp(20px, 5vw, 30px);
+  line-height: 1.1;
+  color: var(--card-hue, var(--term, #4dff9e));
+  word-break: break-word;
+}
+
+.constellation__card-label {
+  display: block;
+  margin-top: 2px;
+  font-family: 'VT323', 'IBM Plex Mono', monospace;
+  font-size: 17px;
+  line-height: 1.25;
+  color: var(--paper, #d9f2e4);
+}
+
+.constellation__card-cluster {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border: 1px solid var(--card-hue, var(--line, #17563a));
+  border-radius: 2px;
+  color: var(--card-hue, var(--dim, #6fae8d));
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.constellation__card-hint {
+  display: block;
+  color: var(--faint, #3d6b55);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.constellation__card[data-state='active'] .constellation__card-hint {
+  display: none;
+}
+
+.constellation__card:not([data-state='active']) .constellation__card-value,
+.constellation__card:not([data-state='active']) .constellation__card-label,
+.constellation__card:not([data-state='active']) .constellation__card-cluster {
+  display: none;
+}
+
+/* Metric list: pre-rendered fallback. Wide screens: visually hidden but focusable
+   (keyboard users tab through it; focusing an item drives the canvas card).
+   Narrow screens: shown as a compact chip row under the canvas. */
+.constellation__list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+@media (min-width: 700px) {
+  .constellation__list {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+@media (max-width: 699px) {
+  .constellation__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .constellation__list [data-metric] {
+    --chip-hue: var(--line, #17563a);
+    display: flex;
+    align-items: baseline;
+    gap: 0.4em;
+    min-width: 0;
+    max-width: 46%;
+    padding: 4px 8px;
+    background: var(--panel, #0a1014);
+    border: 1px solid var(--chip-hue);
+    border-radius: 3px;
+    color: var(--dim, #6fae8d);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    line-height: 1.3;
+    cursor: pointer;
+  }
+
+  .constellation__list [data-metric] b {
+    flex: 0 0 auto;
+    color: var(--chip-hue);
+    font-family: 'Sixtyfour', 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  .constellation__list [data-metric] span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .constellation__list [data-metric][data-discovered='true'] {
+    color: var(--paper, #d9f2e4);
+  }
+
+  .constellation__list [data-metric][data-active='true'] {
+    background: var(--panel-2, #0f1a20);
+    box-shadow: 0 0 0 1px var(--chip-hue) inset;
+  }
+}
+
+.constellation__list [data-metric]:focus-visible {
+  outline: 2px solid var(--term, #4dff9e);
+  outline-offset: 2px;
+}

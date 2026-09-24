@@ -1,0 +1,603 @@
+/* Chain of Custody mini-game. Scoped entirely under .custody-root so it cannot leak
+   into the rest of the site. Sizes use clamp(px, %, px) rather than vw/vh so the game
+   adapts to the *overlay's* actual box, not the outer browser viewport. */
+
+.custody-root {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--panel);
+  color: var(--paper);
+}
+
+.custody-root * {
+  box-sizing: border-box;
+}
+
+.custody {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: clamp(10px, 4%, 22px);
+  gap: clamp(6px, 2%, 12px);
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--paper);
+}
+
+.custody-screen {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 2.5%, 16px);
+  overflow-y: auto;
+}
+
+.custody-root[data-state='ready'] .custody-ready,
+.custody-root[data-state='playing'] .custody-playing,
+.custody-root[data-state='over'] .custody-over {
+  display: flex;
+}
+
+.custody-ready,
+.custody-over {
+  justify-content: center;
+  text-align: center;
+}
+
+.custody-playing {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.custody-title,
+.custody-over-title {
+  font-family: 'Sixtyfour', 'Press Start 2P', monospace;
+  font-size: clamp(16px, 6%, 30px);
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  color: var(--term);
+  text-shadow: 0 0 12px rgba(77, 255, 158, 0.35);
+}
+
+.custody-over-title.is-lose {
+  color: var(--red);
+  text-shadow: 0 0 12px rgba(255, 90, 110, 0.35);
+}
+
+.custody-brief {
+  font-family: 'VT323', monospace;
+  font-size: clamp(14px, 4.2%, 20px);
+  color: var(--dim);
+  max-width: 46ch;
+}
+
+.custody-controls {
+  font-size: clamp(9px, 2.6%, 12px);
+  color: var(--faint);
+  letter-spacing: 0.02em;
+}
+
+.custody-controls-mini {
+  margin-top: auto;
+  padding-top: clamp(4px, 1.5%, 8px);
+}
+
+.custody-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(11px, 3%, 14px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 0.7em 1.6em;
+  background: var(--panel-2);
+  color: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.custody-btn:hover {
+  border-color: var(--term);
+}
+
+.custody-btn:focus-visible {
+  outline: 2px solid var(--term);
+  outline-offset: 2px;
+}
+
+.custody-btn-primary {
+  background: var(--term);
+  color: var(--ink);
+  border-color: var(--term);
+}
+
+.custody-actions {
+  display: flex;
+  gap: clamp(8px, 2.5%, 14px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ---------- HUD + timer ---------- */
+
+.custody-hud {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: clamp(10px, 2.8%, 13px);
+  color: var(--dim);
+}
+
+.custody-hud-item strong {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.custody-timerbar {
+  width: 100%;
+  height: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-2);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.custody-timerbar-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--term);
+  transition: width 0.1s linear, background-color 0.2s ease;
+}
+
+.custody-timerbar.is-critical .custody-timerbar-fill {
+  background: var(--red);
+}
+
+/* ---------- chain row ---------- */
+
+.custody-chain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: clamp(2px, 1%, 6px);
+  flex: 0 0 auto;
+}
+
+.custody-chain-slot {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 72px;
+  aspect-ratio: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  background: var(--panel-2);
+}
+
+.custody-chain-slot.is-filled {
+  border-style: solid;
+  border-color: var(--term);
+  background: rgba(77, 255, 158, 0.08);
+}
+
+.custody-chain-num {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--faint);
+}
+
+.custody-chain-icon {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.custody-chain-label {
+  /* visually hidden: full label stays in the a11y tree without crowding a small slot */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.custody-stamp {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--red);
+  border: 1px solid var(--red);
+  border-radius: 2px;
+  padding: 1px 2px;
+  background: var(--panel);
+  transform: rotate(-14deg);
+  line-height: 1;
+}
+
+.custody-chain-slot.is-landing {
+  animation: custody-land 260ms ease-out;
+}
+
+.custody-chain-slot.is-landing-reduced {
+  animation: custody-land-fade 260ms ease-out;
+}
+
+@keyframes custody-land {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes custody-land-fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.custody-chain-connector {
+  flex: 0 0 auto;
+  width: clamp(6px, 2%, 16px);
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+}
+
+.custody-chain-connector.is-linked {
+  background: var(--term);
+  box-shadow: 0 0 6px rgba(77, 255, 158, 0.6);
+}
+
+/* ---------- preserve hash flavour line ---------- */
+
+.custody-hashline {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: 'VT323', monospace;
+  font-size: clamp(11px, 3%, 14px);
+  color: var(--cyan);
+  flex: 0 0 auto;
+}
+
+.custody-hashline.is-scrolling {
+  transform: translateX(100%);
+  animation: custody-hash-scroll 2.4s linear forwards;
+}
+
+.custody-hashline.is-static {
+  opacity: 0;
+  animation: custody-hash-fade 1.6s ease-out forwards;
+}
+
+@keyframes custody-hash-scroll {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes custody-hash-fade {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- evidence pool ---------- */
+
+.custody-pool-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 1.5%, 8px);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.custody-caption {
+  font-size: clamp(9px, 2.4%, 11px);
+  color: var(--faint);
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+
+.custody-pool {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(5px, 1.6%, 10px);
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.custody-tag {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: clamp(4px, 1.4%, 8px) 2px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--paper);
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.custody-tag:hover {
+  border-color: var(--term);
+}
+
+.custody-tag:focus-visible {
+  outline: 2px solid var(--term);
+  outline-offset: 2px;
+}
+
+.custody-tag-num {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--amber);
+}
+
+.custody-tag-icon {
+  width: clamp(28px, 9%, 48px);
+  height: clamp(28px, 9%, 48px);
+  image-rendering: pixelated;
+}
+
+.custody-tag-label {
+  font-size: clamp(8px, 2.3%, 10px);
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+.custody-tag.is-wrong-shake {
+  animation: custody-shake 350ms ease-in-out;
+}
+
+.custody-tag.is-wrong-flash {
+  animation: custody-flash 350ms ease-in-out;
+}
+
+@keyframes custody-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes custody-flash {
+  0%,
+  100% {
+    outline: 2px solid transparent;
+  }
+  25%,
+  75% {
+    outline: 2px solid var(--red);
+  }
+}
+
+.custody-tag.is-picked {
+  animation: custody-picked 260ms ease-in forwards;
+  pointer-events: none;
+}
+
+.custody-tag.is-picked-reduced {
+  animation: custody-picked-fade 260ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes custody-picked {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.7);
+  }
+}
+
+@keyframes custody-picked-fade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.custody-penalty {
+  position: absolute;
+  top: -6px;
+  right: 2px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--red);
+  pointer-events: none;
+}
+
+.custody-penalty.is-float {
+  animation: custody-penalty-float 700ms ease-out forwards;
+}
+
+.custody-penalty.is-static {
+  animation: custody-penalty-fade 700ms ease-out forwards;
+}
+
+@keyframes custody-penalty-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+}
+
+@keyframes custody-penalty-fade {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- over screen ---------- */
+
+.custody-best-badge {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--ink);
+  background: var(--amber);
+  border-radius: 3px;
+  padding: 4px 8px;
+  letter-spacing: 0.04em;
+}
+
+.custody-over-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 260px;
+}
+
+.custody-stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: clamp(11px, 3%, 14px);
+  border-bottom: 1px dotted var(--line);
+  padding-bottom: 2px;
+}
+
+.custody-stat-label {
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+.custody-stat-value {
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.custody-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 260px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.custody-order-list[hidden] {
+  display: none;
+}
+
+.custody-order-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(10px, 2.8%, 13px);
+  border-bottom: 1px dotted var(--line);
+  padding-bottom: 2px;
+  text-align: left;
+}
+
+.custody-order-num {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--faint);
+  min-width: 1.4em;
+}
+
+.custody-order-list img {
+  width: 20px;
+  height: 20px;
+  image-rendering: pixelated;
+}
+
+.custody-sanko {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custody-sanko[hidden] {
+  display: none;
+}
+
+.custody-sanko-img {
+  width: clamp(56px, 16%, 96px);
+  height: clamp(56px, 16%, 96px);
+  image-rendering: pixelated;
+}
+
+.custody-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}

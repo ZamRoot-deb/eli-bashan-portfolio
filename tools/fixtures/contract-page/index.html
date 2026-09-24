@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EZB-OS fixture (contract self-test)</title>
+<link rel="icon" href="data:," />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; max-width: 100%; background: #05050a; color: #f2ede4; font-family: sans-serif; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  section.zone { position: relative; min-height: 100vh; padding: 24px 16px; border-bottom: 1px solid #222; max-width: 100%; }
+  [data-zone-head] h2 { margin: 0 0 8px; }
+  [data-zone-head] [data-cmd] { display: block; font-family: monospace; opacity: 0.7; margin-bottom: 4px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; max-width: 100%; }
+  .card { border: 1px solid #333; padding: 10px; max-width: 100%; }
+
+  #starfield { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+
+  #hud { position: fixed; top: 0; left: 0; right: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 8px; background: rgba(5,5,10,0.85); }
+  #hud button { background: #111; color: #f2ede4; border: 1px solid #444; padding: 4px 8px; cursor: pointer; }
+
+  [data-minimap] { position: fixed; right: 6px; top: 50%; transform: translateY(-50%); z-index: 20; display: flex; flex-direction: column; gap: 4px; }
+  [data-minimap] a { color: #999; font-size: 10px; text-decoration: none; }
+  [data-minimap] a[aria-current="true"] { color: #1c8c5a; font-weight: bold; }
+
+  [data-scrolltop] { position: fixed; right: 12px; bottom: 12px; z-index: 20; display: none; background: #111; color: #f2ede4; border: 1px solid #444; padding: 6px 10px; }
+
+  [data-terminal], [data-game-overlay], [data-endscreen], [data-levelmap], [data-trophy-room] {
+    position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  /* higher specificity than the bare selectors above, so the `hidden` attribute actually hides
+     these overlays instead of losing to the unconditional display:flex (author vs UA-stylesheet
+     [hidden]{display:none} tie is broken by specificity, not source order). */
+  [data-terminal][hidden], [data-game-overlay][hidden], [data-endscreen][hidden], [data-levelmap][hidden], [data-trophy-room][hidden] {
+    display: none;
+  }
+  [data-terminal] > div, [data-game-overlay] > div, [data-endscreen] > div, [data-levelmap] > div, [data-trophy-room] > div {
+    background: #0a0a12; border: 1px solid #444; padding: 16px; max-width: 90vw; max-height: 90vh; overflow: auto;
+  }
+  [data-game-overlay] { z-index: 45; } /* opens on top of the terminal per CONTRACT ("play" from the terminal, Escape back) */
+  #term-out { min-height: 80px; max-height: 40vh; overflow: auto; font-family: monospace; white-space: pre-wrap; }
+  #term-input { width: 100%; background: #111; color: #f2ede4; border: 1px solid #444; font-family: monospace; padding: 6px; }
+
+  [data-mascot] { display: inline-block; width: 40px; height: 40px; background: #ffcb05; border-radius: 50%; border: 2px solid #111; }
+
+  [data-toasts] { position: fixed; left: 12px; bottom: 12px; z-index: 50; display: flex; flex-direction: column; gap: 6px; }
+  [data-toast] { background: #1c8c5a; color: #fff; padding: 6px 10px; font-size: 12px; }
+
+  [data-stack-item] img { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; }
+
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid #ffcb05; outline-offset: 2px;
+  }
+
+  .blip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #1c8c5a; animation: blip 1s linear infinite; }
+  .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #b23; animation: pulse 1s ease-in-out infinite; }
+  @keyframes blip { from { opacity: 0.2; } to { opacity: 1; } }
+  @keyframes pulse { from { opacity: 0.2; } to { opacity: 1; } }
+  html[data-motion="reduced"] .pulse { animation-play-state: paused; }
+
+  #boot { position: fixed; inset: 0; z-index: 100; background: #000; color: #fff; display: flex; align-items: center; justify-content: center; font-family: monospace; }
+</style>
+</head>
+<body>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+
+  <h1 class="visually-hidden">EZB-OS, Eli Zamar Bashan</h1>
+
+  <div id="hud">
+    <span data-hud="clock-owner">ACC --:--:--</span>
+    <span data-hud="clock-visitor">YOU --:--:--</span>
+    <span data-hud="stopwatch">00:00</span>
+    <span data-hud="xy">0,0</span>
+    <span data-hud="xp">0 XP</span>
+    <span data-hud="level">LV 01</span>
+    <button data-hud="compass" aria-label="Open level map">Compass</button>
+    <button data-hud="terminal" aria-label="Open terminal">Terminal</button>
+    <button data-hud="sound" aria-pressed="false" aria-label="Toggle sound">Sound</button>
+    <button data-hud="trophies" aria-label="Open trophy room">Trophies</button>
+  </div>
+
+  <nav data-minimap aria-label="Zone navigation"></nav>
+  <button data-scrolltop aria-label="Scroll to top">
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+  </button>
+
+  <div data-toasts role="status" aria-live="polite"></div>
+
+  <main>
+    <section class="zone" data-zone id="top">
+      <div data-name>ELI ZAMAR BASHAN</div>
+      <p>Sectors covered: <span data-stat="sectors">13</span>. Banks: <span data-stat="banks">24</span>.</p>
+      <span class="blip" data-motion-ok aria-hidden="true"></span>
+      <span class="pulse" aria-hidden="true"></span>
+      <div data-mascot aria-hidden="true"></div>
+    </section>
+
+    <section class="zone" data-zone id="about">
+      <div data-zone-head><span data-cmd>$ cat ./about.sh</span><h2>About</h2></div>
+      <p>A partial fixture zone, used only to exercise the verify harness.</p>
+    </section>
+
+    <section class="zone" data-zone id="builds">
+      <div data-zone-head><span data-cmd>$ ls ./builds</span><h2>Builds</h2></div>
+      <div class="row">
+        <article class="card" data-platform>
+          <h3 data-platform-name>Fixture Platform One</h3>
+          <p data-platform-body>A sparse fixture platform body.</p>
+          <span data-stack-tag>Node.js</span>
+        </article>
+        <article class="card" data-platform>
+          <h3 data-platform-name>Fixture Platform Two</h3>
+          <p data-platform-body>Another sparse fixture platform body.</p>
+          <span data-stack-tag>PostgreSQL</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="zone" data-zone id="cases">
+      <div data-zone-head><span data-cmd>$ gpg --decrypt ./cases</span><h2>Case files</h2></div>
+      <div class="row">
+        <div class="card" data-case>Fraud</div>
+        <div class="card" data-case>Insider threat</div>
+        <div class="card" data-case>Ransomware</div>
+      </div>
+      <div class="card" data-case-stat>50+ reports</div>
+    </section>
+
+    <section class="zone" data-zone id="quests">
+      <div data-zone-head><span data-cmd>$ cat ./quest_log</span><h2>Quest log</h2></div>
+      <div class="row">
+        <div class="card" data-role data-active="true">DFIR Lead (active)</div>
+        <div class="card" data-role data-active="false">Digital Forensic Analyst</div>
+      </div>
+    </section>
+
+    <section class="zone" data-zone id="trophies">
+      <div data-zone-head><span data-cmd>$ ./achievements --list</span><h2>Trophies</h2></div>
+      <div class="row" aria-hidden="false">
+        <div class="card" data-trophy>13 critical sectors</div>
+        <div class="card" data-trophy>24 member banks</div>
+        <div class="card" data-trophy>100+ trained</div>
+        <div class="card" data-trophy data-dup aria-hidden="true">13 critical sectors</div>
+      </div>
+      <div class="row">
+        <div class="card" data-impact-stat>13 sectors</div>
+        <div class="card" data-impact-stat>100+ trained</div>
+      </div>
+      <div data-constellation>
+        <canvas width="200" height="120" aria-hidden="true"></canvas>
+        <ul>
+          <li data-metric>13 sectors</li>
+          <li data-metric>24 banks</li>
+          <li data-metric>50+ reports</li>
+          <li data-metric>5 platforms</li>
+          <li data-metric>16 certs</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="zone" data-zone id="inventory">
+      <div data-zone-head><span data-cmd>$ open ./inventory --all-slots</span><h2>Inventory</h2></div>
+      <div data-mascot aria-hidden="true"></div>
+      <div data-stack-group>
+        <h3>Digital forensics</h3>
+        <span data-stack-item><img data-icon src="./icon.svg" alt="" />Belkasoft</span>
+        <span data-stack-item><img data-icon src="./icon.svg" alt="" />Cellebrite</span>
+      </div>
+      <div data-stack-group>
+        <h3>AI engineering</h3>
+        <span data-stack-item><img data-icon src="./icon.svg" alt="" />Claude API</span>
+        <span data-stack-item><img data-icon src="./icon.svg" alt="" />Ollama local LLM deployment</span>
+      </div>
+    </section>
+
+    <section class="zone" data-zone id="logs">
+      <div data-zone-head><span data-cmd>$ tail -n2 ./published.log</span><h2>Field logs</h2></div>
+      <div class="row">
+        <div class="card" data-article>The Cryptocurrency Conundrum</div>
+        <div class="card" data-article>Exploring the Tech Revolution</div>
+      </div>
+      <div class="row">
+        <div class="card" data-edu>MSc, Cybersecurity and Digital Forensics</div>
+        <div class="card" data-edu>BSc (Hons), Computer Science</div>
+      </div>
+      <div class="row">
+        <button class="card" data-cert data-seen="false">Cellebrite Mobile Forensic Examiner</button>
+        <button class="card" data-cert data-seen="false">EC-Council Certified Incident Handler</button>
+        <button class="card" data-cert data-seen="false">ISO/IEC 27001 Information Security Associate</button>
+      </div>
+    </section>
+
+    <section class="zone" data-zone id="arcade">
+      <div data-zone-head><span data-cmd>$ ./arcade --list</span><h2>Arcade</h2></div>
+      <div class="row">
+        <button class="card" data-game-launch data-game-id="runner">Runner</button>
+        <button class="card" data-game-launch data-game-id="threathunt">Threat hunt</button>
+        <button class="card" data-game-launch data-game-id="phish">Phish or legit</button>
+        <button class="card" data-game-launch data-game-id="custody">Chain of custody</button>
+      </div>
+    </section>
+
+    <section class="zone" data-zone id="contact">
+      <div data-zone-head><span data-cmd>$ ./start_new_game --with-you</span><h2>Contact</h2></div>
+      <div class="row">
+        <div class="card" data-contact-row data-kind="cv"><a href="./Eli_Zamar_Bashan_CV.pdf">Download CV</a></div>
+        <div class="card" data-contact-row data-kind="email">elibashan@yahoo.com <button data-copy aria-label="Copy email">Copy</button></div>
+        <div class="card" data-contact-row data-kind="phone">+233 (0) 54 145 3098 <button data-copy aria-label="Copy phone">Copy</button></div>
+        <div class="card" data-contact-row data-kind="location">Accra, Ghana</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="terminal" data-terminal hidden role="dialog" aria-modal="true" aria-label="Terminal">
+    <div>
+      <div id="term-out" data-term-out aria-live="polite"></div>
+      <input id="term-input" type="text" aria-label="Terminal input" autocomplete="off" spellcheck="false" />
+    </div>
+  </div>
+
+  <div id="game-overlay" data-game-overlay hidden role="dialog" aria-modal="true" aria-label="Mini-game">
+    <div>
+      <div data-game-root data-state="ready"></div>
+      <div data-game-score data-role="score"></div>
+      <button id="game-close" data-game-close data-role="close" aria-label="Close game">Close</button>
+    </div>
+  </div>
+
+  <div data-endscreen hidden role="dialog" aria-modal="true" aria-label="Quest complete">
+    <div>
+      <p>Quest complete.</p>
+      <div data-countdown><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="#fff" stroke-width="2" /></svg></div>
+      <button data-role="close" aria-label="Close quest complete overlay">Close</button>
+    </div>
+  </div>
+
+  <div data-levelmap hidden role="dialog" aria-modal="true" aria-label="Level map">
+    <div><h3>Level map</h3><button data-role="close" aria-label="Close level map">Close</button></div>
+  </div>
+
+  <div data-trophy-room hidden role="dialog" aria-modal="true" aria-label="Trophy room">
+    <div><h3>Trophy room</h3><button data-role="close" aria-label="Close trophy room">Close</button></div>
+  </div>
+
+  <div id="boot" data-boot>
+    <p>Press any key to continue&hellip;</p>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  var ZONES = ['top', 'about', 'builds', 'cases', 'quests', 'trophies', 'inventory', 'logs', 'arcade', 'contact'];
+  var GAME_IDS = ['runner', 'threathunt', 'phish', 'custody'];
+  var qs = new URLSearchParams(location.search);
+  var FAST = qs.has('fast');
+
+  // ---- overlay stack (Escape closes the top one, focus restored) ----
+  var overlayStack = [];
+  function openOverlay(opts) {
+    var el = opts.el;
+    var returnTo = document.activeElement;
+    el.hidden = false;
+    var entry = {
+      close: function () {
+        el.hidden = true;
+        overlayStack = overlayStack.filter(function (x) { return x !== entry; });
+        if (opts.onClose) opts.onClose();
+        if (returnTo && document.contains(returnTo) && typeof returnTo.focus === 'function') returnTo.focus();
+      },
+    };
+    overlayStack.push(entry);
+    var closeBtns = el.querySelectorAll('[data-role="close"]');
+    for (var i = 0; i < closeBtns.length; i++) closeBtns[i].onclick = (function (e) { return function () { e.close(); }; })(entry);
+    var toFocus = opts.focusEl || el.querySelector('button,[href],input,[tabindex]');
+    if (toFocus) toFocus.focus();
+    return entry;
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlayStack.length) overlayStack[overlayStack.length - 1].close();
+  });
+
+  // ---- boot ----
+  function bootShouldForce() { return qs.has('boot'); }
+  function bootShouldSkip() {
+    if (qs.has('noboot')) return true;
+    try { if (sessionStorage.getItem('ezb.booted') === '1') return true; } catch (e) {}
+    if (navigator.webdriver) return true;
+    return false;
+  }
+  function dismissBoot() {
+    var el = document.getElementById('boot');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    try { sessionStorage.setItem('ezb.booted', '1'); } catch (e) {}
+    document.documentElement.setAttribute('data-app', 'ready');
+  }
+  function initBoot() {
+    if (bootShouldForce()) {
+      document.addEventListener('keydown', dismissBoot, { once: true });
+      document.getElementById('boot').addEventListener('click', dismissBoot, { once: true });
+      return;
+    }
+    if (bootShouldSkip()) { dismissBoot(); return; }
+    document.addEventListener('keydown', dismissBoot, { once: true });
+    document.getElementById('boot').addEventListener('click', dismissBoot, { once: true });
+  }
+
+  // ---- motion ----
+  function applyMotion() {
+    var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.documentElement.setAttribute('data-motion', reduced ? 'reduced' : 'full');
+    return reduced;
+  }
+  var reducedMotion = applyMotion();
+  try { matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', applyMotion); } catch (e) {}
+
+  // ---- starfield (fixed, viewport-covering; frozen under reduced motion) ----
+  var canvas = document.getElementById('starfield');
+  var g = canvas.getContext('2d');
+  var rafId = null;
+  function resizeCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; drawStars(0); }
+  function drawStars(t) {
+    g.fillStyle = '#05050a'; g.fillRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = '#ffffff';
+    for (var i = 0; i < 40; i++) {
+      var x = (i * 97) % Math.max(canvas.width, 1);
+      var y = (i * 53) % Math.max(canvas.height, 1);
+      var tw = reducedMotion ? 1 : (0.5 + 0.5 * Math.sin(t / 500 + i));
+      g.globalAlpha = tw;
+      g.fillRect(x, y, 2, 2);
+    }
+    g.globalAlpha = 1;
+  }
+  function loop(t) { drawStars(t); rafId = requestAnimationFrame(loop); }
+  function applyStarfieldMotion() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (reducedMotion) drawStars(0); else loop(0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+  applyStarfieldMotion();
+
+  // ---- XP / level / toasts ----
+  var LS_KEY = 'ezb.state.v1';
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null') || { xp: 0, achievements: [] }; }
+    catch (e) { return { xp: 0, achievements: [] }; }
+  }
+  function saveState() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+  var state = loadState();
+  function levelFor(xp) { return 1 + Math.floor(xp / 100); }
+  function renderHud() {
+    document.querySelector('[data-hud="xp"]').textContent = state.xp + ' XP';
+    var lvl = levelFor(state.xp);
+    document.querySelector('[data-hud="level"]').textContent = 'LV ' + (lvl < 10 ? '0' + lvl : String(lvl));
+  }
+  function toast(msg) {
+    var el = document.createElement('div');
+    el.setAttribute('data-toast', '');
+    el.textContent = msg;
+    document.querySelector('[data-toasts]').appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 4000);
+  }
+  function addXp(n, reason) {
+    state.xp += n;
+    saveState();
+    renderHud();
+    toast(reason + ', +' + n + ' XP');
+  }
+  renderHud();
+
+  // ---- clocks / stopwatch / xy ----
+  var startTime = Date.now();
+  function two(n) { return n < 10 ? '0' + n : String(n); }
+  function tick() {
+    var now = new Date();
+    document.querySelector('[data-hud="clock-owner"]').textContent = 'ACC ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Accra' });
+    document.querySelector('[data-hud="clock-visitor"]').textContent = 'YOU ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    var elapsed = Math.floor((Date.now() - startTime) / 1000);
+    document.querySelector('[data-hud="stopwatch"]').textContent = two(Math.floor(elapsed / 60)) + ':' + two(elapsed % 60);
+  }
+  setInterval(tick, 1000);
+  tick();
+  document.addEventListener('mousemove', function (e) {
+    document.querySelector('[data-hud="xy"]').textContent = e.clientX + ',' + e.clientY;
+  });
+
+  // ---- scroll: scrolltop visibility, hash routing, minimap, endscreen ----
+  var scrollTopBtn = document.querySelector('[data-scrolltop]');
+  function updateScrollTop() { scrollTopBtn.style.display = window.scrollY > 40 ? 'block' : 'none'; }
+  scrollTopBtn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'auto' }); });
+
+  var minimapEl = document.querySelector('[data-minimap]');
+  minimapEl.innerHTML = ZONES.map(function (z) { return '<a href="#' + z + '" aria-current="false">' + z + '</a>'; }).join('');
+
+  function setHash(zone) {
+    var h = zone === 'top' ? '' : '#' + zone;
+    try { history.replaceState(null, '', location.pathname + location.search + h); } catch (e) {}
+  }
+  function setCurrentZone(zone) {
+    setHash(zone);
+    var links = minimapEl.querySelectorAll('a');
+    for (var i = 0; i < links.length; i++) links[i].setAttribute('aria-current', links[i].getAttribute('href') === '#' + zone ? 'true' : 'false');
+  }
+  var zoneEls = ZONES.map(function (z) { return document.getElementById(z); }).filter(Boolean);
+  var io = new IntersectionObserver(function (entries) {
+    // Pick the single most-visible zone from this batch instead of applying every entry in
+    // order, so two zones simultaneously crossing the threshold can't leave the hash one step
+    // ahead of (or behind) the zone actually scrolled to.
+    var best = null;
+    entries.forEach(function (en) {
+      if (en.isIntersecting && en.intersectionRatio > 0.4 && (!best || en.intersectionRatio > best.intersectionRatio)) best = en;
+    });
+    if (best) setCurrentZone(best.target.id);
+  }, { threshold: [0.4] });
+  zoneEls.forEach(function (el) { io.observe(el); });
+
+  var endscreenEl = document.querySelector('[data-endscreen]');
+  var endscreenShown = false;
+  try { endscreenShown = sessionStorage.getItem('ezb.endscreenShown') === '1'; } catch (e) {}
+  function maybeShowEndscreen() {
+    if (endscreenShown || overlayStack.length) return;
+    var atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
+    if (!atBottom) return;
+    endscreenShown = true;
+    try { sessionStorage.setItem('ezb.endscreenShown', '1'); } catch (e) {}
+    openOverlay({ el: endscreenEl });
+  }
+  window.addEventListener('scroll', function () { updateScrollTop(); maybeShowEndscreen(); });
+  updateScrollTop();
+
+  // ---- HUD buttons: compass -> levelmap, trophies -> trophy room, terminal button ----
+  document.querySelector('[data-hud="compass"]').addEventListener('click', function () {
+    openOverlay({ el: document.querySelector('[data-levelmap]') });
+  });
+  document.querySelector('[data-hud="trophies"]').addEventListener('click', function () {
+    openOverlay({ el: document.querySelector('[data-trophy-room]') });
+  });
+  document.querySelector('[data-hud="sound"]').addEventListener('click', function (e) {
+    var on = e.target.getAttribute('aria-pressed') === 'true';
+    e.target.setAttribute('aria-pressed', on ? 'false' : 'true');
+  });
+
+  // ---- terminal ----
+  var terminalEntry = null;
+  var ABOUT_TEXT = 'Digital forensics and incident response is the work: proving what an incident means, not just imaging a drive.';
+  var FILES = {
+    about: ABOUT_TEXT,
+    cases: 'Case types: fraud, insider threat, ransomware.',
+    quests: 'Quest log: DFIR Lead (active).',
+  };
+  function termPrint(line) {
+    var out = document.getElementById('term-out');
+    var p = document.createElement('div');
+    p.textContent = line;
+    out.appendChild(p);
+    out.scrollTop = out.scrollHeight;
+  }
+  function runCommand(raw) {
+    var cmd = (raw || '').trim();
+    termPrint('$ ' + cmd);
+    var parts = cmd.split(/\s+/).filter(Boolean);
+    var name = parts[0] || '';
+    var args = parts.slice(1);
+    if (name === 'help') termPrint('Commands: help whoami ls cat play contact sudo clear exit');
+    else if (name === 'whoami') termPrint('Eli Zamar Bashan, DFIR Lead and AI Engineer');
+    else if (name === 'ls') termPrint(Object.keys(FILES).join('  '));
+    else if (name === 'cat') termPrint(FILES[args[0]] || ('cat: ' + args[0] + ': No such file'));
+    else if (name === 'play') { if (GAME_IDS.indexOf(args[0]) >= 0) openGame(args[0]); else termPrint('play: unknown game ' + args[0]); }
+    else if (name === 'contact') termPrint('elibashan@yahoo.com');
+    else if (name === 'sudo') termPrint(args.join(' ') === 'hire-me' ? 'Access granted. Say hello: elibashan@yahoo.com' : 'sudo: permission denied');
+    else if (name === 'clear') document.getElementById('term-out').innerHTML = '';
+    else if (name === 'exit') closeTerminal();
+    else if (name) termPrint(name + ': command not found');
+  }
+  document.getElementById('term-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      var val = e.target.value;
+      e.target.value = '';
+      runCommand(val);
+    }
+  });
+  function openTerminal() {
+    terminalEntry = openOverlay({ el: document.getElementById('terminal'), focusEl: document.getElementById('term-input') });
+  }
+  function closeTerminal() { if (terminalEntry) terminalEntry.close(); }
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Backquote' && !overlayStack.length) openTerminal();
+  });
+  document.querySelector('[data-hud="terminal"]').addEventListener('click', openTerminal);
+
+  // ---- games ----
+  var GAME_TEMPLATES = {
+    runner: '<button data-role="start" aria-label="Start runner">START</button><div data-role="playfield" hidden><p>Running.</p></div><div data-role="over" hidden><p>GAME OVER</p></div>',
+    threathunt: '<button data-role="start" aria-label="Start threat hunt">START</button><div data-role="playfield" hidden><p>Hunting.</p></div><div data-role="over" hidden><p>GAME OVER</p></div>',
+    custody: '<button data-role="start" aria-label="Start chain of custody">START</button><div data-role="playfield" hidden><p>Logging evidence.</p></div><div data-role="over" hidden><p>GAME OVER</p></div>',
+    phish: '<button data-role="start" aria-label="Start phish or legit">START</button><div data-role="playfield" hidden><p>Phish or legit?</p><button data-role="answer" data-answer="phish">Phish</button><button data-role="answer" data-answer="legit">Legit</button></div><div data-role="over" hidden><p>GAME OVER</p></div>',
+  };
+  function mountGame(root, id) {
+    var startBtn = root.querySelector('[data-role="start"]');
+    var playfield = root.querySelector('[data-role="playfield"]');
+    var overEl = root.querySelector('[data-role="over"]');
+    var roundsNeeded = id === 'phish' ? 3 : 0;
+    var roundsDone = 0;
+    var timer = null;
+    function toPlaying() {
+      if (root.getAttribute('data-state') !== 'ready') return;
+      root.setAttribute('data-state', 'playing');
+      startBtn.hidden = true;
+      playfield.hidden = false;
+      if (id !== 'phish') timer = setTimeout(toOver, FAST ? 900 : 4000);
+    }
+    function toOver() {
+      if (root.getAttribute('data-state') !== 'playing') return;
+      root.setAttribute('data-state', 'over');
+      playfield.hidden = true;
+      overEl.hidden = false;
+      if (timer) clearTimeout(timer);
+      addXp(25, id + ' cleared');
+    }
+    function onAnswer() { roundsDone++; if (roundsDone >= roundsNeeded) toOver(); }
+    startBtn.addEventListener('click', toPlaying);
+    if (id === 'phish') {
+      var answerBtns = playfield.querySelectorAll('[data-role="answer"]');
+      for (var i = 0; i < answerBtns.length; i++) answerBtns[i].addEventListener('click', onAnswer);
+    }
+    function onKey(e) {
+      if (root.getAttribute('data-state') === 'ready' && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); toPlaying(); }
+      else if (id === 'phish' && root.getAttribute('data-state') === 'playing' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { onAnswer(); }
+    }
+    document.addEventListener('keydown', onKey);
+    root._cleanup = function () { document.removeEventListener('keydown', onKey); };
+  }
+  var gameEntry = null;
+  function openGame(id) {
+    var overlay = document.getElementById('game-overlay');
+    var root = overlay.querySelector('[data-game-root]');
+    root.innerHTML = GAME_TEMPLATES[id] || '<p>Unknown game</p>';
+    root.setAttribute('data-state', 'ready');
+    root.setAttribute('data-game', id);
+    mountGame(root, id);
+    var startBtn = root.querySelector('[data-role="start"]');
+    gameEntry = openOverlay({ el: overlay, focusEl: startBtn, onClose: function () { if (root._cleanup) root._cleanup(); } });
+    return Promise.resolve();
+  }
+  function closeGame() { if (gameEntry) gameEntry.close(); }
+  var launchers = document.querySelectorAll('[data-game-launch]');
+  for (var li = 0; li < launchers.length; li++) {
+    (function (btn) { btn.addEventListener('click', function () { openGame(btn.getAttribute('data-game-id')); }); })(launchers[li]);
+  }
+
+  // ---- cert buttons (decorative activation, matches CONTRACT's data-seen note) ----
+  var certBtns = document.querySelectorAll('[data-cert]');
+  for (var ci = 0; ci < certBtns.length; ci++) {
+    certBtns[ci].addEventListener('click', function (e) { e.target.setAttribute('data-seen', 'true'); });
+  }
+
+  // ---- copy buttons (decorative; clipboard access is not part of any verify group) ----
+  var copyBtns = document.querySelectorAll('[data-copy]');
+  for (var cpi = 0; cpi < copyBtns.length; cpi++) {
+    copyBtns[cpi].addEventListener('click', function () {});
+  }
+
+  // ---- debug handle ----
+  var storageOk = (function () { try { localStorage.setItem('__ezb_t', '1'); localStorage.removeItem('__ezb_t'); return true; } catch (e) { return false; } })();
+  window.__ezb = {
+    xp: function () { return state.xp; },
+    level: function () { return levelFor(state.xp); },
+    achievements: function () { return state.achievements.slice(); },
+    storageOk: storageOk,
+    openTerminal: openTerminal,
+    closeTerminal: closeTerminal,
+    openGame: openGame,
+    closeGame: closeGame,
+    showEnd: function () { openOverlay({ el: endscreenEl }); },
+    zones: ZONES.slice(),
+  };
+
+  initBoot();
+})();
+</script>
+</body>
+</html>

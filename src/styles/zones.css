@@ -1154,10 +1154,13 @@
   gap: 12px;
   padding: 28px 24px;
   background: var(--ink);
+  container-type: inline-size;
 }
 .istat__v {
   font-family: var(--f-display);
-  font-size: clamp(2.6rem, 4.4vw, 3.6rem);
+  /* Sixtyfour is very wide: size the number to its own column so "$240K+" never spills */
+  font-size: clamp(1.9rem, 15cqi, 3.6rem);
+  white-space: nowrap;
   line-height: 1;
   color: var(--amber);
   text-shadow: 0 0 24px rgba(255, 215, 95, 0.4);

@@ -1,5 +1,7 @@
 # EZB-OS: Eli Zamar Bashan
 
+Live: https://zamroot-deb.github.io/eli-bashan-portfolio/
+
 Personal site of Eli Zamar Bashan, DFIR Lead and AI Engineer (Accra, Ghana), built as a terminal arcade game:
 ten zones, a live HUD, XP and achievements, four mini-games, an in-page terminal and Sanko, the mascot.
 
@@ -23,6 +25,14 @@ npm run build
 The output in `dist/` is plain static files with relative paths, so it works on any static host or sub-path
 (GitHub Pages, Netlify, an nginx folder).
 
+## Deploy
+
+```bash
+node tools/deploy-pages.mjs
+```
+
+Builds and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves. Run it from a clean, pushed `main`.
+
 ## Verify
 
 ```bash
@@ -30,6 +40,7 @@ node tools/verify.mjs
 node tools/check-static.mjs
 ```
 
+Add `--url https://zamroot-deb.github.io/eli-bashan-portfolio` to run the same checks against the live site.
 `verify.mjs` serves `dist/` on a throwaway local port, drives headless Chrome through every zone, overlay and
 game (keyboard and pointer), and prints one PASS/FAIL line per check. There is no dev server in this project
 on purpose.

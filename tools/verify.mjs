@@ -22,12 +22,13 @@ import { ALL_GROUPS, GROUP_ORDER } from './lib/groups.mjs'
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 function parseArgs(argv) {
-  const out = { only: null, shots: false, dist: null }
+  const out = { only: null, shots: false, dist: null, url: null }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--only') out.only = argv[++i]
     else if (a === '--shots') out.shots = true
     else if (a === '--dist') out.dist = argv[++i]
+    else if (a === '--url') out.url = argv[++i].replace(/\/+$/, '') // test a deployed site instead of dist/
     else {
       console.error(`Unknown argument: ${a}`)
       process.exit(2)
@@ -92,7 +93,7 @@ async function main() {
 
   let exitCode = 0
   try {
-    server = await startServer(distDir)
+    if (!args.url) server = await startServer(distDir)
 
     let content = null
     let contentError = null
@@ -107,7 +108,7 @@ async function main() {
     b = await launch({})
 
     const ctx = {
-      url: server.url,
+      url: args.url || server.url,
       distDir,
       repoRoot: REPO_ROOT,
       content,

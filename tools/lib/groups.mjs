@@ -144,7 +144,9 @@ export async function gServe(ctx) {
     chk.ok(res.status === 200, `GET ${href} status ${res.status}`)
     const want = mimeFor(href.split('?')[0])
     const got = res.headers.get('content-type') || ''
-    chk.ok(got === want, `GET ${href} content-type ${JSON.stringify(got)} (want ${JSON.stringify(want)})`)
+    // compare MIME essence; text/javascript and application/javascript are both valid for module scripts
+    const essence = (t) => t.split(';')[0].trim().toLowerCase().replace(/^application\/javascript$/, 'text/javascript')
+    chk.ok(essence(got) === essence(want), `GET ${href} content-type ${JSON.stringify(got)} (want ${JSON.stringify(want)})`)
     if (res.status === 200) okCount++
   }
 
